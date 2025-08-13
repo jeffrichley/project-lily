@@ -53,4 +53,4 @@ Software development project planning and organization tool
 - **Formatting**: black for consistent code formatting
 - **Type Checking**: mypy for static type analysis
 - **Documentation**: Sphinx with modern theme
-- **CI/CD**: GitHub Actions with quality gates 
+- **CI/CD**: GitHub Actions with quality gates

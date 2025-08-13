@@ -293,4 +293,4 @@ Tests must be:
 - **Fast** – sub-second preferred
 - **Focused** – each test proves one thing
 - **Descriptive** – names and docstrings must explain intent
-- **Strategic** – only mock external boundaries 
+- **Strategic** – only mock external boundaries

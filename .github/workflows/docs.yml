@@ -28,7 +28,7 @@ jobs:
       # ─── 2️⃣ Install the same interpreter you test with ------------------------------
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "pip"
 
       # ─── 3️⃣ Install uv + nox (same bootstrap used in ci_nox.yml) --------------------

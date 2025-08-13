@@ -12,8 +12,8 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from lily.config import LilyConfig
-from lily.theme import get_theme_manager
+from lily.config import ConfigManager, LilyConfig
+from lily.theme import ThemeName, get_theme_manager
 
 
 @dataclass
@@ -50,7 +50,9 @@ class ShellState:
 class ShellManager:
     """Manages the interactive shell session."""
 
-    def __init__(self, config: LilyConfig):
+    completer: WordCompleter | None
+
+    def __init__(self, config: LilyConfig) -> None:
         """Initialize shell manager."""
         self.config = config
         self.state = ShellState(config=config)
@@ -61,7 +63,7 @@ class ShellManager:
         history_file = self.config.sessions_dir / f"history_{self.state.session_id}.txt"
         history_file.parent.mkdir(parents=True, exist_ok=True)
 
-        self.prompt_session = PromptSession(
+        self.prompt_session: PromptSession[str] = PromptSession(
             history=FileHistory(str(history_file)),
             style=self.theme_manager.pt_style,
         )
@@ -240,20 +242,18 @@ class ShellManager:
             else:
                 return f"[error]Unknown command: {command_name}[/error]"
 
-    def _cmd_exit(self, args: list[str]) -> str:
+    def _cmd_exit(self, _args: list[str]) -> str:
         """Handle exit command."""
         self.state.is_running = False
         return "[info]Goodbye![/info]"
 
-    def _cmd_clear(self, args: list[str]) -> str:
+    def _cmd_clear(self, _args: list[str]) -> str:
         """Handle clear command."""
         self.console.clear()
         return ""
 
-    def _cmd_config(self, args: list[str]) -> str:
+    def _cmd_config(self, _args: list[str]) -> str:
         """Handle config command."""
-        from lily.config import ConfigManager
-
         config_manager = ConfigManager()
         config_manager.show_config(self.config)
         return ""
@@ -266,8 +266,6 @@ class ShellManager:
 
         theme_name = args[0].lower()
         try:
-            from lily.theme import ThemeName
-
             theme_enum = ThemeName(theme_name)
             self.theme_manager.switch_theme(theme_enum)
             # Update console theme
@@ -279,7 +277,7 @@ class ShellManager:
             )
             return f"[error]Unknown theme: {theme_name}[/error]\n[text]Available themes: {available}[/text]"
 
-    def _cmd_pwd(self, args: list[str]) -> str:
+    def _cmd_pwd(self, _args: list[str]) -> str:
         """Handle pwd command."""
         return f"[path]{self.state.current_directory}[/path]"
 
@@ -300,7 +298,7 @@ class ShellManager:
         except Exception as e:
             return f"[error]cd: {e}[/error]"
 
-    def _cmd_ls(self, args: list[str]) -> str:
+    def _cmd_ls(self, _args: list[str]) -> str:
         """Handle ls command."""
         try:
             items = list(self.state.current_directory.iterdir())

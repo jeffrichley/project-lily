@@ -1,69 +1,107 @@
 """Pytest configuration and plugins for Lily CLI."""
 
+import importlib
 import inspect
 import json
 import os
 
 import pytest
 
-# Cache to track file modification times and processed functions
-_file_cache: dict[str, tuple[float, set]] = {}
 
-# Cache file path - stored in pytest cache directory
-_cache_file = None
+class CacheManager:
+    """Manages caching for test function validation."""
 
+    def __init__(self) -> None:
+        """Initialize the cache manager."""
+        self._file_cache: dict[str, tuple[float, set]] = {}
+        self._cache_file: str | None = None
 
-def _get_cache_file() -> str:
-    """Get the cache file path, creating it if needed."""
-    global _cache_file
-    if _cache_file is None:
-        # Use pytest's cache directory for consistency
-        cache_dir = os.path.join(os.getcwd(), ".pytest_cache")
-        os.makedirs(cache_dir, exist_ok=True)
-        _cache_file = os.path.join(cache_dir, "auto_fix_cache.json")
-    return _cache_file
+    def _get_cache_file(self) -> str:
+        """Get the cache file path, creating it if needed."""
+        if self._cache_file is None:
+            # Use pytest's cache directory for consistency
+            cache_dir = os.path.join(os.getcwd(), ".pytest_cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            self._cache_file = os.path.join(cache_dir, "auto_fix_cache.json")
+        return self._cache_file
 
+    def load_cache(self) -> None:
+        """Load cache from disk if it exists."""
+        cache_file = self._get_cache_file()
 
-def _load_cache() -> None:
-    """Load cache from disk if it exists."""
-    global _file_cache
-    cache_file = _get_cache_file()
+        if os.path.exists(cache_file):
+            try:
+                with open(cache_file) as f:
+                    data = json.load(f)
+                    # Convert lists back to sets for O(1) lookups
+                    self._file_cache = {
+                        file_path: (mtime, set(funcs))
+                        for file_path, (mtime, funcs) in data.items()
+                    }
+            except (json.JSONDecodeError, OSError):
+                # If cache is corrupted, start fresh
+                self._file_cache = {}
 
-    if os.path.exists(cache_file):
+    def save_cache(self) -> None:
+        """Save cache to disk."""
+        cache_file = self._get_cache_file()
+
         try:
-            with open(cache_file) as f:
-                data = json.load(f)
-                # Convert lists back to sets for O(1) lookups
-                _file_cache = {
-                    file_path: (mtime, set(funcs))
-                    for file_path, (mtime, funcs) in data.items()
-                }
-        except (json.JSONDecodeError, OSError):
-            # If cache is corrupted, start fresh
-            _file_cache = {}
+            # Convert sets to lists for JSON serialization
+            data = {
+                file_path: (mtime, list(funcs))
+                for file_path, (mtime, funcs) in self._file_cache.items()
+            }
+
+            with open(cache_file, "w") as f:
+                json.dump(data, f)
+        except OSError:
+            # If we can't save, just continue without caching
+            pass
+
+    def is_cached_and_valid(self, item: pytest.Item) -> bool:
+        """Check if the file is cached and hasn't been modified since last check."""
+        file_path = item.module.__file__
+        if not file_path:
+            return False
+
+        try:
+            current_mtime = os.path.getmtime(file_path)
+
+            if file_path in self._file_cache:
+                cached_mtime, processed_functions = self._file_cache[file_path]
+
+                # If file hasn't been modified and function was already processed
+                if current_mtime <= cached_mtime and item.name in processed_functions:
+                    return True
+
+            # Cache miss - update cache
+            if file_path not in self._file_cache:
+                self._file_cache[file_path] = (current_mtime, set())
+
+            self._file_cache[file_path][1].add(item.name)
+            return False
+
+        except (OSError, AttributeError):
+            # If we can't get file info, don't cache
+            return False
+
+    def update_cache(self, file_path: str, item_name: str) -> None:
+        """Update cache with new modification time."""
+        if file_path:
+            self._file_cache[file_path] = (
+                os.path.getmtime(file_path),
+                {item_name},
+            )
 
 
-def _save_cache() -> None:
-    """Save cache to disk."""
-    cache_file = _get_cache_file()
-
-    try:
-        # Convert sets to lists for JSON serialization
-        data = {
-            file_path: (mtime, list(funcs))
-            for file_path, (mtime, funcs) in _file_cache.items()
-        }
-
-        with open(cache_file, "w") as f:
-            json.dump(data, f)
-    except OSError:
-        # If we can't save, just continue without caching
-        pass
+# Global cache manager instance
+_cache_manager = CacheManager()
 
 
-def pytest_configure(config: pytest.Config) -> None:
+def pytest_configure(_config: pytest.Config) -> None:
     """Load cache when pytest starts."""
-    _load_cache()
+    _cache_manager.load_cache()
 
 
 def pytest_runtest_setup(item: pytest.Item) -> None:
@@ -74,7 +112,8 @@ def pytest_runtest_setup(item: pytest.Item) -> None:
     This provides "test failed" messages for better developer experience.
     """
     try:
-        # Skip non-function items (like classes, modules)
+        # Type ignore needed because pytest's item object has dynamic attributes
+        # that mypy can't statically verify, but we need to check for the function attribute
         if not hasattr(item, "function") or not getattr(item, "function", None):  # type: ignore[misc]
             return
 
@@ -167,13 +206,13 @@ def _check_missing_sections(
 def _check_and_fix_return_type(item: pytest.Item, source_lines: list[str]) -> None:
     """Check that test function has proper return type annotation and auto-fix if needed."""
     # Check cache first
-    if _is_cached_and_valid(item):
+    if _cache_manager.is_cached_and_valid(item):
         return
 
     # Look for the function definition line
     for i, line in enumerate(source_lines):
-        line = line.strip()
-        if line.startswith("def ") and item.name in line:
+        stripped_line = line.strip()
+        if stripped_line.startswith("def ") and item.name in stripped_line:
             # Check if it has a return type annotation
             if "->" not in line:
                 # Auto-fix: add return type annotation
@@ -187,36 +226,8 @@ def _check_and_fix_return_type(item: pytest.Item, source_lines: list[str]) -> No
             break
 
 
-def _is_cached_and_valid(item: pytest.Item) -> bool:
-    """Check if the file is cached and hasn't been modified since last check."""
-    file_path = item.module.__file__
-    if not file_path:
-        return False
-
-    try:
-        current_mtime = os.path.getmtime(file_path)
-
-        if file_path in _file_cache:
-            cached_mtime, processed_functions = _file_cache[file_path]
-
-            # If file hasn't been modified and function was already processed
-            if current_mtime <= cached_mtime and item.name in processed_functions:
-                return True
-
-        # Cache miss - update cache
-        if file_path not in _file_cache:
-            _file_cache[file_path] = (current_mtime, set())
-
-        _file_cache[file_path][1].add(item.name)
-        return False
-
-    except (OSError, AttributeError):
-        # If we can't get file info, don't cache
-        return False
-
-
 def _auto_fix_return_type(
-    item: pytest.Item, source_lines: list[str], func_line_index: int
+    item: pytest.Item, _source_lines: list[str], _func_line_index: int
 ) -> None:
     """Automatically add return type annotation to test function."""
     try:
@@ -247,14 +258,9 @@ def _auto_fix_return_type(
 
                 # Update cache with new modification time
                 if item.module.__file__:
-                    _file_cache[item.module.__file__] = (
-                        os.path.getmtime(item.module.__file__),
-                        {item.name},
-                    )
+                    _cache_manager.update_cache(item.module.__file__, item.name)
 
                 # Re-import the module to pick up changes
-                import importlib
-
                 importlib.reload(item.module)
 
                 return
@@ -282,6 +288,9 @@ def _has_descriptive_comment(line: str) -> bool:
     return " - " in comment_part and len(comment_part.split(" - ")[1].strip()) > 0
 
 
-def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+def pytest_sessionfinish(
+    session: pytest.Session,
+    exitstatus: int,
+) -> None:
     """Save cache to disk."""
-    _save_cache()
+    _cache_manager.save_cache()

@@ -5,7 +5,7 @@ alwaysApply: false
 
 # 🌱 StuffIt: Git + Quality Workflow Guide for Project Lily
 
-When the user says **"stuffit"**, run the full Git + quality workflow.  
+When the user says **"stuffit"**, run the full Git + quality workflow.
 When they say **"prestuff"**, run all pre-commit quality checks.
 
 > Project Lily uses a **three-tier quality tool system**:
@@ -209,4 +209,4 @@ uv run mypy src tests
 | **Always**          | Use `just` or `nox`, not `make`     |
 | **Enforced**        | Conventional commits via commitizen |
 | **Test & Lint**     | `just` preferred, `nox` fallback    |
-| **Advanced**        | Use `uv` only for direct tool debugging | 
+| **Advanced**        | Use `uv` only for direct tool debugging |

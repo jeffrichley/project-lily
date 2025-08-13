@@ -65,7 +65,7 @@ class ExecutionMode(Enum):
 class CommandRegistry:
     commands: dict[str, PetalCommand]
     categories: dict[str, list[str]]
-    
+
     def register_command(self, command: PetalCommand) -> None
     def get_command(self, name: str) -> PetalCommand | None
     def list_commands(self) -> list[str]
@@ -157,9 +157,9 @@ import sys
 
 def main():
     format_type = args.get('format', 'short')
-    
+
     if format_type == 'json':
-        result = subprocess.run(['git', 'status', '--porcelain'], 
+        result = subprocess.run(['git', 'status', '--porcelain'],
                               capture_output=True, text=True)
         # Parse and format as JSON
         status_lines = result.stdout.strip().split('\n')

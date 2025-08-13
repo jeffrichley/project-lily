@@ -32,9 +32,6 @@ updates:
           - "mypy*"
           - "black*"
           - "isort*"
-        update-types:
-          - "minor"
-          - "patch"
           - "opencv*"
           - "pillow*"
         update-types:

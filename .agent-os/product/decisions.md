@@ -4,7 +4,7 @@
 
 ### 2025-08-12: Project Structure and Tooling
 **Decision**: Use modern Python tooling stack (uv, nox, just, pytest, typer)
-**Rationale**: 
+**Rationale**:
 - uv provides faster dependency resolution than pip
 - nox enables reproducible development environments
 - just simplifies common development tasks

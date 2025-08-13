@@ -137,7 +137,7 @@ DARK_PT_STYLE = Style.from_dict(
 class ThemeManager:
     """Manages theme switching and configuration."""
 
-    def __init__(self, theme_name: ThemeName = ThemeName.IRIS_BLOOM):
+    def __init__(self, theme_name: ThemeName = ThemeName.IRIS_BLOOM) -> None:
         """Initialize theme manager with default theme."""
         self._theme_name = theme_name
         self._themes = {

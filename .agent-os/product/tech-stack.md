@@ -3,7 +3,7 @@
 ## Technology Stack
 
 ### Core Framework
-- **Python 3.11+**: Primary language for the application
+- **Python 3.12+**: Primary language for the application
 - **Pydantic**: Data validation and settings management
 - **Rich**: Terminal UI and colored output
 - **Typer**: CLI framework for command-line interface

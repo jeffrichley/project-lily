@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/jeffrichley/lily/workflows/CI/badge.svg)](https://github.com/jeffrichley/lily/actions)
 [![Codecov](https://codecov.io/gh/jeffrichley/lily/branch/main/graph/badge.svg)](https://codecov.io/gh/jeffrichley/lily)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![pre-commit enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Ruff](https://img.shields.io/badge/ruff-enabled-brightgreen?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)

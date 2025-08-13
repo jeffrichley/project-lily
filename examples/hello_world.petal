@@ -1,0 +1,31 @@
+petal: "1"
+name: "Hello World Workflow"
+description: "A simple example workflow"
+
+params:
+  name:
+    type: "str"
+    required: true
+    default: "World"
+    help: "Name to greet"
+
+vars:
+  greeting: "Hello {{ params.name }}!"
+
+steps:
+  - id: "greet"
+    uses: "shell"
+    env:
+      GREETING: "{{ vars.greeting }}"
+    with_:
+      command: "echo $GREETING"
+    outputs:
+      message:
+        type: "str"
+        path: "output/greeting.txt"
+
+  - id: "log"
+    uses: "shell"
+    needs: ["greet"]
+    with_:
+      command: "echo 'Workflow completed successfully'"
