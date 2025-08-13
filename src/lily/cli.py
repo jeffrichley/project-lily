@@ -2,20 +2,16 @@
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
-from rich.prompt import Prompt
-from rich.table import Table
 
 from lily import __version__
-from lily.config import ConfigManager, LilyConfig
+from lily.config import ConfigManager
 from lily.shell import ShellManager
-from lily.theme import get_theme_manager, ThemeName
-
+from lily.theme import ThemeName, get_theme_manager
 
 # Create Typer app
 app = typer.Typer(
@@ -53,7 +49,7 @@ def show_banner() -> None:
 
 @app.command()
 def start(
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -61,7 +57,7 @@ def start(
         exists=True,
         dir_okay=False,
     ),
-    theme: Optional[str] = typer.Option(
+    theme: str | None = typer.Option(
         None,
         "--theme",
         "-t",
@@ -119,7 +115,7 @@ def run(
         exists=True,
         dir_okay=False,
     ),
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",
@@ -132,7 +128,7 @@ def run(
     try:
         show_banner()
 
-        if not file.suffix == ".petal":
+        if file.suffix != ".petal":
             console.print("[error]File must have .petal extension[/error]")
             raise typer.Exit(1)
 
@@ -164,13 +160,13 @@ def config(
         "-s",
         help="Show current configuration",
     ),
-    set_theme: Optional[str] = typer.Option(
+    set_theme: str | None = typer.Option(
         None,
         "--theme",
         "-t",
         help="Set theme (iris-bloom, light, dark)",
     ),
-    config_file: Optional[Path] = typer.Option(
+    config_file: Path | None = typer.Option(
         None,
         "--config",
         "-c",

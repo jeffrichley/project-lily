@@ -2,10 +2,9 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Any
 
-from rich.theme import Theme
 from prompt_toolkit.styles import Style
+from rich.theme import Theme
 
 
 class ThemeName(str, Enum):

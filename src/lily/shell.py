@@ -1,9 +1,9 @@
 """Interactive shell for Lily CLI."""
 
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import WordCompleter
@@ -31,8 +31,8 @@ class Command:
 
     name: str
     description: str
-    handler: Callable[[List[str]], str]
-    aliases: List[str] = field(default_factory=list)
+    handler: Callable[[list[str]], str]
+    aliases: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -41,8 +41,8 @@ class ShellState:
 
     config: LilyConfig
     session_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    conversation_history: List[Message] = field(default_factory=list)
-    available_commands: Dict[str, Command] = field(default_factory=dict)
+    conversation_history: list[Message] = field(default_factory=list)
+    available_commands: dict[str, Command] = field(default_factory=dict)
     is_running: bool = True
     current_directory: Path = field(default_factory=Path.cwd)
 
@@ -222,7 +222,7 @@ class ShellManager:
 
     # Built-in command handlers
 
-    def _cmd_help(self, args: List[str]) -> str:
+    def _cmd_help(self, args: list[str]) -> str:
         """Handle help command."""
         if not args:
             # Show all commands
@@ -240,17 +240,17 @@ class ShellManager:
             else:
                 return f"[error]Unknown command: {command_name}[/error]"
 
-    def _cmd_exit(self, args: List[str]) -> str:
+    def _cmd_exit(self, args: list[str]) -> str:
         """Handle exit command."""
         self.state.is_running = False
         return "[info]Goodbye![/info]"
 
-    def _cmd_clear(self, args: List[str]) -> str:
+    def _cmd_clear(self, args: list[str]) -> str:
         """Handle clear command."""
         self.console.clear()
         return ""
 
-    def _cmd_config(self, args: List[str]) -> str:
+    def _cmd_config(self, args: list[str]) -> str:
         """Handle config command."""
         from lily.config import ConfigManager
 
@@ -258,7 +258,7 @@ class ShellManager:
         config_manager.show_config(self.config)
         return ""
 
-    def _cmd_theme(self, args: List[str]) -> str:
+    def _cmd_theme(self, args: list[str]) -> str:
         """Handle theme command."""
         if not args:
             # Show current theme
@@ -279,11 +279,11 @@ class ShellManager:
             )
             return f"[error]Unknown theme: {theme_name}[/error]\n[text]Available themes: {available}[/text]"
 
-    def _cmd_pwd(self, args: List[str]) -> str:
+    def _cmd_pwd(self, args: list[str]) -> str:
         """Handle pwd command."""
         return f"[path]{self.state.current_directory}[/path]"
 
-    def _cmd_cd(self, args: List[str]) -> str:
+    def _cmd_cd(self, args: list[str]) -> str:
         """Handle cd command."""
         if not args:
             return "[error]cd: missing directory argument[/error]"
@@ -300,7 +300,7 @@ class ShellManager:
         except Exception as e:
             return f"[error]cd: {e}[/error]"
 
-    def _cmd_ls(self, args: List[str]) -> str:
+    def _cmd_ls(self, args: list[str]) -> str:
         """Handle ls command."""
         try:
             items = list(self.state.current_directory.iterdir())

@@ -3,12 +3,11 @@
 import inspect
 import json
 import os
-import pytest
-from typing import Dict, Tuple
 
+import pytest
 
 # Cache to track file modification times and processed functions
-_file_cache: Dict[str, Tuple[float, set]] = {}
+_file_cache: dict[str, tuple[float, set]] = {}
 
 # Cache file path - stored in pytest cache directory
 _cache_file = None
@@ -32,7 +31,7 @@ def _load_cache() -> None:
 
     if os.path.exists(cache_file):
         try:
-            with open(cache_file, "r") as f:
+            with open(cache_file) as f:
                 data = json.load(f)
                 # Convert lists back to sets for O(1) lookups
                 _file_cache = {
@@ -222,7 +221,7 @@ def _auto_fix_return_type(
     """Automatically add return type annotation to test function."""
     try:
         # Use a simpler approach: modify the specific line directly
-        with open(item.module.__file__, "r") as f:
+        with open(item.module.__file__) as f:
             lines = f.readlines()
 
         # Find the function definition line
