@@ -1,0 +1,172 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+Hey Jeff — Iris here. Short answer: **the “big kids” treat a CLI like a public API**. They unit-test the core logic, snapshot the UX, and run cross-platform end-to-end flows—hermetically. Here’s the playbook I see at high-end shops:
+
+# What great teams do for CLI testing
+
+## 1) Architect for testability
+
+* **Separate layers:** `core/` (pure Python services) ← `cli/` (Typer/Click adapter).
+  → 90% of tests hit `core` (fast, deterministic). A thin set validates CLI wiring.
+* **Pure functions, DI:** pass I/O, paths, env, and time as dependencies so you can stub them.
+
+## 2) Unit tests (wiring & parsing)
+
+* Verify subcommands, options, defaults, and exit codes.
+* Use the framework’s runner (Typer→Click) instead of `subprocess` for speed.
+
+```python
+# tests/test_cli_run.py
+import typer
+from typer.testing import CliRunner
+from lily.cli import app  # Typer app
+
+runner = CliRunner(mix_stderr=False)
+
+def test_run_happy_path(tmp_path, monkeypatch):
+    outdir = tmp_path / "out"
+    res = runner.invoke(app, ["run", "demo.petal", "--out", str(outdir)])
+    assert res.exit_code == 0
+    assert "Completed" in res.stdout
+```
+
+## 3) Snapshot (“golden”) tests for UX
+
+* Lock down `--help`, error messages, and typical output.
+* Strip ANSI codes so snapshots are stable across terminals.
+
+```python
+# tests/test_help_snapshot.py
+import re
+from typer.testing import CliRunner
+from lily.cli import app
+
+ANSI = re.compile(r"\x1b\[.*?m")
+def strip_ansi(s: str) -> str: return ANSI.sub("", s)
+
+def test_help_snapshot(file_regression):
+    res = CliRunner().invoke(app, ["--help"])
+    assert res.exit_code == 0
+    file_regression.check(strip_ansi(res.stdout), extension=".txt")
+```
+
+*(Tools teams use: `pytest-regressions`, `approvaltests`, or `syrupy` for text snapshots.)*
+
+## 4) End-to-end tests (real process)
+
+* For **console\_scripts** and packaging, spawn the installed CLI:
+
+  * Build wheel, `pip/uv` install into a temp venv, then `subprocess.run(...)`.
+* Validate **return codes**, **stdout/stderr**, and **files produced**.
+
+```python
+# tests/e2e/test_install_and_run.py
+import subprocess, sys, os, textwrap, venv, tempfile, pathlib
+
+def test_entry_point_e2e(tmp_path):
+    # build wheel outside snippet; assume dist/*.whl exists
+    wheel = max(pathlib.Path("dist").glob("*.whl"))
+    vdir = tmp_path / "venv"; venv.EnvBuilder(with_pip=True).create(vdir)
+    py = vdir / ("Scripts/python.exe" if os.name=="nt" else "bin/python")
+    subprocess.check_call([str(py), "-m", "pip", "install", str(wheel)])
+    out = subprocess.run(
+        [str(py), "-m", "lily", "--version"],
+        capture_output=True, text=True
+    )
+    assert out.returncode == 0
+    assert "lily" in out.stdout.lower()
+```
+
+## 5) Interactive & TUI flows
+
+* **prompt\_toolkit** shells: feed keystrokes and assert screen content.
+* Use **pexpect** (or `wexpect` on Windows) for interactive transcripts.
+
+```python
+# tests/e2e/test_shell_interactive.py
+import pexpect, sys, os
+def test_shell_basic():
+    child = pexpect.spawn("lily shell", env={**os.environ, "NO_COLOR":"1"})
+    child.expect("lily >")
+    child.sendline("help")
+    child.expect("Commands")
+    child.sendline("quit")
+    child.expect(pexpect.EOF)
+```
+
+For **Rich** output, render with color disabled and assert the text layout:
+
+```python
+from rich.console import Console
+from lily.ui import render_status  # your function
+def test_rich_rendering_stable(snapshot):
+    c = Console(color_system=None, width=80, record=True)
+    render_status(c, step="Compile", ok=True)
+    snapshot.assert_match(c.export_text())
+```
+
+## 6) Filesystem, env, time: hermetic
+
+* Use `tmp_path` for all I/O; **never** touch the real home directory.
+* Monkeypatch env: `HOME`, `XDG_CONFIG_HOME`, `APPDATA`, `NO_COLOR`, `TERM`, `TZ`.
+* Freeze time for timestamps (`freezegun`).
+
+```python
+def test_xdg_paths(tmp_path, monkeypatch):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path/"cfg"))
+    # run CLI; assert it writes cfg/lily/config.yaml
+```
+
+## 7) Network & subprocess isolation
+
+* Mock HTTP with **VCR.py** or **responses**.
+* Stub `subprocess.run` with `pytest-subprocess` when you can; use real subprocess only in E2E.
+
+## 8) Cross-platform matrix in CI
+
+* **OS:** Ubuntu, macOS, Windows.
+* **Py versions:** 3.10–3.12 (match your support window).
+* **Terminal modes:** TTY vs non-TTY; `NO_COLOR=1` on/off.
+* **Locale:** set `LC_ALL=C.UTF-8` to avoid formatting drift.
+
+*(Nox or tox to orchestrate; `uv` to create fast, reproducible envs.)*
+
+## 9) Contract tests for CLI stability
+
+* Treat the CLI surface (subcommand names, flags, exit codes) as a **contract**.
+* A small suite asserts that renaming or removing options fails the build.
+* Keep `--help` under snapshot test; add a CHANGELOG gate for any delta.
+
+## 10) Performance & smoke checks
+
+* A “smoke” test that runs a representative `.petal` end-to-end with a tight timeout.
+* Track wall time regression with a loose threshold, e.g., `assert duration < 5.0`.
+
+---
+
+## Minimal testing stack I recommend for Lily
+
+* **pytest** + **pytest-cov**
+* **Typer/Click CliRunner** for fast CLI unit tests
+* **pytest-regressions** (or ApprovalTests) for golden text
+* **pexpect** for interactive shells
+* **freezegun**, **pytest-subprocess**, **responses/VCR.py** for determinism
+* **nox** (or tox) to run the full matrix locally; CI mirrors it
+
+---
+
+## Tiny checklist to operationalize
+
+* [ ] Split core vs CLI adapter
+* [ ] Add CliRunner tests for each subcommand
+* [ ] Snapshot `--help` and common errors (ANSI stripped)
+* [ ] One real E2E invoking installed entry point
+* [ ] Interactive test for `lily shell` (pexpect)
+* [ ] Hermetic FS/env fixtures (XDG, HOME, APPDATA)
+* [ ] CI matrix: {linux, mac, windows} × {3.10–3.12}
+* [ ] Coverage gate (e.g., 90%) and a smoke/perf test
+
+If you want, I’ll turn this into a **`tests/README.md` + `noxfile.py`** and drop in working examples wired to Lily’s Typer app and prompt\_toolkit shell.
