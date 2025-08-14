@@ -99,7 +99,7 @@ class CacheManager:
 _cache_manager = CacheManager()
 
 
-def pytest_configure(_config: pytest.Config) -> None:
+def pytest_configure() -> None:
     """Load cache when pytest starts."""
     _cache_manager.load_cache()
 

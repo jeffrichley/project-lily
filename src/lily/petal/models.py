@@ -230,6 +230,8 @@ class Petal:
     petal: Literal["1"]
     name: str
     description: str | None = None
+    extends: str | None = None  # NEW: Support for inheritance
+    composition_enabled: bool = True  # NEW: Explicit composition flag
     params: dict[str, Param] = field(default_factory=dict)
     env: dict[str, str] = field(default_factory=dict)
     vars: dict[str, str] = field(default_factory=dict)

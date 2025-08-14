@@ -35,9 +35,6 @@ cd lily
 # Install with uv (recommended)
 uv sync
 
-# Or install with pip
-pip install -r requirements.txt
-
 # Install in editable mode for development
 uv pip install -e ".[dev,docs]"
 ```

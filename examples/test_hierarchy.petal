@@ -1,0 +1,33 @@
+petal: "1"
+name: "Hierarchy Test"
+description: "Test workflow for hierarchical config system"
+composition_enabled: true
+
+params:
+  input_file:
+    type: "str"
+    required: true
+    help: "Input file path"
+  debug:
+    type: "bool"
+    default: false
+    help: "Enable debug mode"
+
+env:
+  PROCESSOR_PATH: "/usr/bin/processor"
+  LOG_LEVEL: "INFO"
+
+steps:
+  - id: "test_step"
+    uses: "shell"
+    with_:
+      command: "echo 'Testing hierarchical config with {{ params.input_file }}'"
+    outputs:
+      result:
+        type: "str"
+        path: "output/result.txt"
+
+outputs:
+  result:
+    from: "result"
+    type: "str"

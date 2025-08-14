@@ -12,7 +12,7 @@
 [![pip-audit](https://img.shields.io/badge/pip--audit-enabled-brightgreen?logo=security&logoColor=white)](https://pypi.org/project/pip-audit/)
 ![pyproject validated](https://img.shields.io/badge/pyproject%20schema-valid-brightgreen?style=flat-square)
 
-Software development project planning and organization tool
+A modern, declarative workflow automation system with a simple CLI interface.
 
 ## 🚀 Quick Start
 
@@ -48,12 +48,37 @@ uv run dev docs
 
 ## 📦 Usage
 
-```python
-from lily import main_function
+### Basic Workflow Execution
 
-# Process some input data
-result = main_function("Hello, World!")
-print(result)  # Output: Processed: Hello, World!
+```bash
+# Compose and run a Petal workflow
+lily compose examples/hello_world.petal
+
+# Run with dry-run mode to see what would happen
+lily compose examples/hello_world.petal --dry-run
+
+# Get information about a workflow
+lily info examples/hello_world.petal
+```
+
+### Creating Petal Workflows
+
+Petal workflows are defined in YAML files with a simple, declarative syntax:
+
+```yaml
+name: "Hello World"
+description: "A simple example workflow"
+
+params:
+  name:
+    type: "str"
+    default: "World"
+    help: "Name to greet"
+
+steps:
+  - id: "greet"
+    uses: "shell"
+    command: "echo 'Hello, {{ params.name }}!'"
 ```
 
 ## 🧪 Testing
@@ -73,6 +98,7 @@ uv run pytest tests/unit/test_example.py
 
 - **[API Reference](docs/api.md)**: Complete API documentation
 - **[Contributing Guide](CONTRIBUTING.md)**: How to contribute to the project
+- **[Petal DSL Guide](docs/planning/petal/)**: Petal workflow language documentation
 
 ## 🛠️ Development
 
@@ -92,13 +118,17 @@ uv run dev format        # Code formatting
 
 ```
 lily/
-├── src/lily/          # Main package source code
-├── tests/                           # Test suite
-│   ├── unit/                       # Unit tests
-│   ├── integration/                # Integration tests
-│   └── e2e/                        # End-to-end tests
-├── docs/                           # Documentation
-└── README.md                       # This file
+├── src/lily/           # Main package source code
+│   ├── cli/           # Command-line interface
+│   ├── petal/         # Petal DSL implementation
+│   └── compose/       # Workflow composition engine
+├── tests/             # Test suite
+│   ├── unit/          # Unit tests
+│   ├── integration/   # Integration tests
+│   └── e2e/           # End-to-end tests
+├── examples/          # Example Petal workflows
+├── docs/              # Documentation
+└── README.md          # This file
 ```
 
 ## 🤝 Contributing
@@ -126,7 +156,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - Built with modern Python best practices
 - Designed for maintainability and extensibility
+- Simple, declarative workflow automation
 
 ---
 
-**Project Lily** - Software development project planning and organization tool
+**Project Lily** - Modern workflow automation with declarative YAML

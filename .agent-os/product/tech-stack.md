@@ -4,7 +4,7 @@
 
 ### Core Framework
 - **Python 3.12+**: Primary language for the application
-- **Pydantic**: Data validation and settings management
+- **Dataclasses**: Data validation and settings management
 - **Rich**: Terminal UI and colored output
 - **Typer**: CLI framework for command-line interface
 - **Prompt Toolkit**: Interactive command-line interface with autocomplete

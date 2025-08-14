@@ -35,7 +35,7 @@ The look and feel theme is documented in ./docs/planning/lily_cli_theme.md and h
 
 ### Implementation Status
 - ✅ **CLI Framework**: Complete with Typer-based command structure
-- ✅ **Configuration System**: Complete with Pydantic models and TOML persistence
+- ✅ **Configuration System**: Complete with dataclass models and TOML persistence
 - ✅ **Theme System**: Complete with Rich themes and theme switching
 - ✅ **Interactive Shell**: Complete with prompt-toolkit integration
 - ✅ **Error Handling**: Complete with Rich-styled error messages

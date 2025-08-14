@@ -1,12 +1,16 @@
-"""Petal DSL parser for loading and validating workflow files."""
+"""Petal DSL parser with simple YAML parsing.
 
-import tempfile
+This parser provides basic YAML parsing for Petal workflow files without
+complex configuration management dependencies.
+"""
+
 from pathlib import Path
 from typing import TypedDict
 
-from lily.petal.config import convert_config_to_petal, load_petal_config
+import yaml
+
 from lily.petal.expressions import ExpressionEvaluator
-from lily.petal.models import Petal, StepBase
+from lily.petal.models import Petal
 from lily.petal.templating import PetalTemplateEngine
 
 
@@ -24,30 +28,22 @@ class PetalParseError(Exception):
 
 
 class PetalParser:
-    """Parser for Petal DSL workflow files."""
+    """Parser for Petal DSL workflow files with simple YAML parsing."""
 
     def __init__(self) -> None:
         """Initialize the Petal parser."""
         self.template_engine = PetalTemplateEngine()
         self.expression_evaluator = ExpressionEvaluator()
 
-    def _parse_yaml_content(self, content: str) -> Petal:
-        """Parse YAML content and return validated Petal object."""
-        # Write content to temporary file for Hydra
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
-            f.write(content)
-            temp_path = Path(f.name)
-
-        try:
-            # Use Hydra for type-safe loading
-            config = load_petal_config(temp_path)
-            return convert_config_to_petal(config)
-        finally:
-            # Clean up temporary file
-            temp_path.unlink(missing_ok=True)
-
     def parse_file(self, file_path: str | Path) -> Petal:
-        """Parse a Petal file and return a Petal object."""
+        """Parse a Petal file using simple YAML parsing.
+
+        Args:
+            file_path: Path to the Petal file
+
+        Returns:
+            Parsed Petal object
+        """
         file_path = Path(file_path)
 
         if not file_path.exists():
@@ -57,13 +53,15 @@ class PetalParser:
             raise PetalParseError(f"Unsupported file extension: {file_path.suffix}")
 
         try:
-            # Use Hydra for type-safe loading
-            config = load_petal_config(file_path)
-            petal = convert_config_to_petal(config)
+            # Load the file with YAML
+            with open(file_path) as f:
+                data = yaml.safe_load(f)
 
-            # Validate templates and expressions
-            self._validate_petal_templates(petal)
-            self._validate_petal_expressions(petal)
+            # Convert to Petal model
+            petal = self._dict_to_petal(data)
+
+            # Validate the workflow
+            self._validate_petal(petal)
 
             return petal
 
@@ -72,15 +70,113 @@ class PetalParser:
                 raise
             raise PetalParseError(f"Failed to parse Petal file: {e}") from e
 
+    def _dict_to_petal(self, data: dict) -> Petal:
+        """Convert dictionary to Petal model."""
+        if not isinstance(data, dict):
+            raise PetalParseError(f"Expected dictionary, got {type(data)}")
+
+        # Check if the data has the required fields
+        if "petal" not in data:
+            raise PetalParseError("Missing key 'petal'")
+        if "name" not in data:
+            raise PetalParseError("Missing key 'name'")
+
+        # Convert parameters to Param objects
+        params = {}
+        for param_name, param_data in data.get("params", {}).items():
+            if isinstance(param_data, dict):
+                from lily.petal.models import Param
+
+                params[param_name] = Param(**param_data)
+            else:
+                # Handle simple string type case
+                from lily.petal.models import Param
+
+                params[param_name] = Param(type=str(param_data))
+
+        # Convert steps to StepBase objects
+        steps = []
+        for step_data in data.get("steps", []):
+            if not isinstance(step_data, dict):
+                raise PetalParseError(
+                    f"Step must be a dictionary, got {type(step_data)}"
+                )
+
+            if "id" not in step_data:
+                raise PetalParseError("Step missing required 'id' field")
+            if "uses" not in step_data:
+                raise PetalParseError(
+                    f"Step {step_data.get('id', 'unknown')} missing required 'uses' field"
+                )
+
+            # Convert step data to StepBase
+            from lily.petal.models import IODecl, StepBase
+
+            # Convert inputs/outputs to IODecl objects
+            inputs = {}
+            for input_name, input_data in step_data.get("inputs", {}).items():
+                if isinstance(input_data, dict):
+                    inputs[input_name] = IODecl(**input_data)
+                else:
+                    inputs[input_name] = IODecl(
+                        type=str(input_data) if input_data else None
+                    )
+
+            outputs = {}
+            for output_name, output_data in step_data.get("outputs", {}).items():
+                if isinstance(output_data, dict):
+                    outputs[output_name] = IODecl(**output_data)
+                else:
+                    outputs[output_name] = IODecl(
+                        type=str(output_data) if output_data else None
+                    )
+
+            step = StepBase(
+                id=str(step_data["id"]),
+                uses=str(step_data["uses"]),
+                needs=step_data.get("needs", []),
+                if_=step_data.get("if"),
+                timeout=step_data.get("timeout"),
+                retries=step_data.get("retries"),
+                env=step_data.get("env"),
+                inputs=inputs,
+                outputs=outputs,
+                cache=step_data.get("cache"),
+                resources=step_data.get("resources"),
+                adapter=step_data.get("adapter"),
+                with_=step_data.get("with_"),
+            )
+            steps.append(step)
+
+        # Convert to Petal model
+        return Petal(
+            petal=str(data["petal"]),
+            name=str(data["name"]),
+            description=(
+                str(data.get("description")) if data.get("description") else None
+            ),
+            extends=str(data.get("extends")) if data.get("extends") else None,
+            composition_enabled=bool(data.get("composition_enabled", True)),
+            params=params,
+            env=data.get("env", {}),
+            vars=data.get("vars", {}),
+            steps=steps,
+            outputs=data.get("outputs", []),
+            on_error=data.get("on_error", []),
+            artifacts=data.get("artifacts", {}) if data.get("artifacts") else None,
+        )
+
     def parse_string(self, content: str) -> Petal:
         """Parse Petal content from a string."""
         try:
-            # Parse and validate YAML content using Hydra
-            petal = self._parse_yaml_content(content)
+            # Parse YAML content directly
+            data = yaml.safe_load(content)
 
-            # Validate templates and expressions
-            self._validate_petal_templates(petal)
-            self._validate_petal_expressions(petal)
+            # Convert to Petal model
+            petal = self._dict_to_petal(data)
+
+            # Validate the workflow
+            self._validate_petal(petal)
 
             return petal
 
@@ -88,6 +184,32 @@ class PetalParser:
             if isinstance(e, PetalParseError):
                 raise
             raise PetalParseError(f"Failed to parse Petal content: {e}") from e
+
+    def validate_file(self, file_path: str | Path) -> tuple[bool, str | None]:
+        """Validate a Petal file without parsing it completely.
+
+        Args:
+            file_path: Path to the Petal file
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        try:
+            self.parse_file(file_path)
+            return True, None
+        except PetalParseError as e:
+            return False, str(e)
+        except Exception as e:
+            return False, f"Unexpected error: {e}"
+
+    def _validate_petal(self, petal: Petal) -> None:
+        """Validate a Petal object."""
+        # Validate templates and expressions
+        self._validate_petal_templates(petal)
+        self._validate_petal_expressions(petal)
+
+        # Validate step types
+        self._validate_step_types(petal)
 
     def _validate_petal_templates(self, petal: Petal) -> None:
         """Validate all templates in a Petal object."""
@@ -107,49 +229,55 @@ class PetalParser:
                     )
 
     def _validate_step_templates(self, petal: Petal) -> None:
-        """Validate templates in step sections."""
+        """Validate templates in steps section."""
         for step in petal.steps:
-            self._validate_step_env_templates(step)
-            self._validate_step_io_templates(step)
+            # Validate step environment templates
+            if step.env:
+                for env_name, env_value in step.env.items():
+                    if isinstance(env_value, str) and "{{" in env_value:
+                        is_valid, error = self.template_engine.validate_petal_template(
+                            env_value
+                        )
+                        if not is_valid:
+                            raise PetalParseError(
+                                f"Invalid template in step {step.id}.env.{env_name}: {error}"
+                            )
 
-    def _validate_step_env_templates(self, step: StepBase) -> None:
-        """Validate environment variable templates in a step."""
-        if not step.env:
-            return
+            # Validate step input templates
+            if step.inputs:
+                for input_name, input_decl in step.inputs.items():
+                    if hasattr(input_decl, "from_") and input_decl.from_:
+                        if (
+                            isinstance(input_decl.from_, str)
+                            and "{{" in input_decl.from_
+                        ):
+                            is_valid, error = (
+                                self.template_engine.validate_petal_template(
+                                    input_decl.from_
+                                )
+                            )
+                            if not is_valid:
+                                raise PetalParseError(
+                                    f"Invalid template in step {step.id}.inputs.{input_name}.from: {error}"
+                                )
 
-        for env_key, env_value in step.env.items():
-            if isinstance(env_value, str) and "{{" in env_value:
-                is_valid, error = self.template_engine.validate_petal_template(
-                    env_value
-                )
-                if not is_valid:
-                    raise PetalParseError(
-                        f"Invalid template in step {step.id}.env.{env_key}: {error}"
-                    )
-
-    def _validate_step_io_templates(self, step: StepBase) -> None:
-        """Validate input/output templates in a step."""
-        # Validate input templates
-        for input_name, input_decl in step.inputs.items():
-            if input_decl.from_ and "{{" in input_decl.from_:
-                is_valid, error = self.template_engine.validate_petal_template(
-                    input_decl.from_
-                )
-                if not is_valid:
-                    raise PetalParseError(
-                        f"Invalid template in step {step.id}.inputs.{input_name}.from: {error}"
-                    )
-
-        # Validate output templates
-        for output_name, output_decl in step.outputs.items():
-            if output_decl.path and "{{" in output_decl.path:
-                is_valid, error = self.template_engine.validate_petal_template(
-                    output_decl.path
-                )
-                if not is_valid:
-                    raise PetalParseError(
-                        f"Invalid template in step {step.id}.outputs.{output_name}.path: {error}"
-                    )
+            # Validate step output templates
+            if step.outputs:
+                for output_name, output_decl in step.outputs.items():
+                    if hasattr(output_decl, "from_") and output_decl.from_:
+                        if (
+                            isinstance(output_decl.from_, str)
+                            and "{{" in output_decl.from_
+                        ):
+                            is_valid, error = (
+                                self.template_engine.validate_petal_template(
+                                    output_decl.from_
+                                )
+                            )
+                            if not is_valid:
+                                raise PetalParseError(
+                                    f"Invalid template in step {step.id}.outputs.{output_name}.from: {error}"
+                                )
 
     def _validate_petal_expressions(self, petal: Petal) -> None:
         """Validate all expressions in a Petal object."""
@@ -161,83 +289,65 @@ class PetalParser:
                         f"Invalid expression in step {step.id}.if: {error}"
                     )
 
-    def validate_file(self, file_path: str | Path) -> tuple[bool, str | None]:
-        """Validate a Petal file without parsing it completely."""
-        try:
-            self.parse_file(file_path)
-            return True, None
-        except PetalParseError as e:
-            return False, str(e)
+    def _validate_step_types(self, petal: Petal) -> None:
+        """Validate that all step types are supported."""
+        for step in petal.steps:
+            if step.uses not in [
+                "shell",
+                "python",
+                "llm",
+                "human",
+                "foreach",
+                "include",
+                "tool",
+            ]:
+                raise PetalParseError(
+                    f"Unsupported step type '{step.uses}' in step {step.id}"
+                )
 
     def get_template_variables(self, petal: Petal) -> TemplateVariables:
-        """Extract all template variables from a Petal object."""
-        variables: TemplateVariables = {
-            "vars": self._extract_vars_template_variables(petal),
-            "steps": self._extract_steps_template_variables(petal),
-        }
-        return variables
-
-    def _extract_vars_template_variables(self, petal: Petal) -> set[str]:
-        """Extract template variables from vars section."""
-        vars_variables = set()
-        for var_value in petal.vars.values():
-            if isinstance(var_value, str) and "{{" in var_value:
-                vars_variables.update(
-                    self.template_engine.get_required_variables(var_value)
-                )
-        return vars_variables
-
-    def _extract_steps_template_variables(self, petal: Petal) -> dict[str, set[str]]:
-        """Extract template variables from steps section."""
-        steps_variables = {}
-        for step in petal.steps:
-            step_vars = self._extract_step_template_variables(step)
-            if step_vars:
-                steps_variables[step.id] = step_vars
-        return steps_variables
-
-    def _extract_step_template_variables(self, step: StepBase) -> set[str]:
-        """Extract template variables from a single step."""
-        step_vars = set()
-
-        # Extract from env variables
-        step_vars.update(self._extract_template_vars_from_dict(step.env))
-
-        # Extract from inputs
-        for input_decl in step.inputs.values():
-            if input_decl.from_ and "{{" in input_decl.from_:
-                step_vars.update(
-                    self.template_engine.get_required_variables(input_decl.from_)
-                )
-
-        # Extract from outputs
-        for output_decl in step.outputs.values():
-            if output_decl.path and "{{" in output_decl.path:
-                step_vars.update(
-                    self.template_engine.get_required_variables(output_decl.path)
-                )
-
-        return step_vars
-
-    def _extract_template_vars_from_dict(self, data: dict[str, str] | None) -> set[str]:
-        """Extract template variables from a dictionary of strings."""
-        if not data:
-            return set()
-
+        """Extract template variables from a Petal object."""
         vars_set = set()
-        for value in data.values():
-            if isinstance(value, str) and "{{" in value:
-                vars_set.update(self.template_engine.get_required_variables(value))
-        return vars_set
+        steps_dict = {}
 
-    def get_expression_identifiers(self, petal: Petal) -> dict[str, set[str]]:
-        """Extract all expression identifiers from a Petal object."""
-        identifiers = {}
+        # Extract variables from vars section
+        for var_value in petal.vars.values():
+            if isinstance(var_value, str):
+                vars_set.update(self.template_engine.extract_variables(var_value))
 
+        # Extract variables from steps
         for step in petal.steps:
-            if step.if_:
-                identifiers[step.id] = self.expression_evaluator.get_identifiers(
-                    step.if_
-                )
+            step_vars = set()
 
-        return identifiers
+            # Environment variables
+            if step.env:
+                for env_value in step.env.values():
+                    if isinstance(env_value, str):
+                        step_vars.update(
+                            self.template_engine.extract_variables(env_value)
+                        )
+
+            # Input variables
+            if step.inputs:
+                for input_decl in step.inputs.values():
+                    if hasattr(input_decl, "from_") and input_decl.from_:
+                        if isinstance(input_decl.from_, str):
+                            step_vars.update(
+                                self.template_engine.extract_variables(input_decl.from_)
+                            )
+
+            # Output variables
+            if step.outputs:
+                for output_decl in step.outputs.values():
+                    if hasattr(output_decl, "from_") and output_decl.from_:
+                        if isinstance(output_decl.from_, str):
+                            step_vars.update(
+                                self.template_engine.extract_variables(
+                                    output_decl.from_
+                                )
+                            )
+
+            if step_vars:
+                steps_dict[step.id] = step_vars
+
+        return TemplateVariables(vars=vars_set, steps=steps_dict)

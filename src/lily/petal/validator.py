@@ -23,8 +23,8 @@ class PetalValidator:
         """Perform comprehensive validation of a Petal workflow."""
         errors = []
 
-        # Basic structure validation (already done by Pydantic)
-        # Schema validation (already done by Pydantic)
+        # Basic structure validation (already done by dataclass __post_init__)
+        # Schema validation (already done by dataclass __post_init__)
 
         # DAG validation
         dag_errors = self._validate_dag(petal)
@@ -275,11 +275,6 @@ class PetalValidator:
                         errors.append(
                             f"Step '{step.id}' cache policy must be one of {valid_policies}, got '{policy}'"
                         )
-
-                # Validate cache key if provided
-                if "key" in step.cache:
-                    # Key is already typed as string in CacheDict, so no validation needed
-                    pass
 
         return errors
 

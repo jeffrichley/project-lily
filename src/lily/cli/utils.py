@@ -10,8 +10,12 @@ from lily.theme import get_theme_manager
 
 def get_console() -> Console:
     """Get a console instance with the current theme."""
-    theme_manager = get_theme_manager()
-    return Console(theme=theme_manager.rich_theme)
+    try:
+        theme_manager = get_theme_manager()
+        return Console(theme=theme_manager.rich_theme)
+    except Exception:
+        # Fallback to default console if theme manager fails
+        return Console()
 
 
 def show_banner() -> None:
@@ -28,5 +32,7 @@ def show_banner() -> None:
         "Software development project planning and organization tool", style="muted"
     )
 
-    banner_panel = Panel(banner_text, border_style="accent", padding=(1, 2))
+    banner_panel = Panel(
+        banner_text, title="Welcome to Lily", border_style="accent", padding=(1, 2)
+    )
     console.print(banner_panel)

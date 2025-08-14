@@ -1,7 +1,6 @@
 """Theme system for Lily CLI with Iris Bloom theme."""
 
 from enum import Enum
-from pathlib import Path
 
 from prompt_toolkit.styles import Style
 from rich.theme import Theme
@@ -171,19 +170,10 @@ class ThemeManager:
         """Get list of available themes."""
         return list(self._themes.keys())
 
-    def load_theme_from_config(self, config_path: Path) -> None:
-        """Load theme from configuration file."""
-        # This will be implemented when we add theme persistence
-        pass
-
-    def save_theme_to_config(self, config_path: Path) -> None:
-        """Save current theme to configuration file."""
-        # This will be implemented when we add theme persistence
-        pass
-
 
 # Global theme manager instance
 theme_manager = ThemeManager()
+theme_manager.switch_theme(ThemeName.IRIS_BLOOM)
 
 
 def get_theme_manager() -> ThemeManager:

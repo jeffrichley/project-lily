@@ -6,7 +6,7 @@ Project Lily uses dependency groups for modular installation, allowing you to in
 
 Dependency groups are defined in `pyproject.toml` and provide a clean way to manage different types of dependencies:
 
-- **Runtime dependencies**: Core functionality required to use the library (currently pydantic for data validation)
+- **Runtime dependencies**: Core functionality required to use the library (currently dataclasses for data validation)
 - **Development dependencies**: Tools for development, testing, and quality assurance
 - **Documentation dependencies**: Tools for building documentation
 - **Type checking dependencies**: Tools for static type analysis
@@ -23,7 +23,7 @@ uv pip install -e .
 ```
 
 This includes:
-- **pydantic**: Data validation and settings management (the only runtime dependency)
+- **dataclasses**: Data validation and settings management (built into Python)
 
 ### Development
 

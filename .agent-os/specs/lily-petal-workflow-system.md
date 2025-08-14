@@ -16,7 +16,7 @@
 - **Example Workflows**: Hello World and Video Processing examples created and tested
 
 ### 🔄 **Phase 2: Composition & Planning - IN PROGRESS**
-- **Hydra Integration**: Next priority
+- **Advanced Features**: Next priority
 - **Lock File System**: Design and implementation
 - **Configuration Composition**: Extends/overlays/profiles
 
@@ -43,15 +43,15 @@
 
 ## 🚀 **Next Steps**
 
-### **Immediate Priority: Phase 2 - Hydra Integration**
-1. **Set up Hydra configuration management**
-2. **Implement composition engine with extends/overlays/profiles**
-3. **Design and implement lock file system**
-4. **Add configuration layout structure**
+### **Immediate Priority: Phase 2 - Advanced Features**
+1. **Implement composition engine with extends/overlays/profiles**
+2. **Design and implement lock file system**
+3. **Add configuration layout structure**
+4. **Implement matrix operations**
 
 ### **Success Metrics**
 - ✅ **Phase 1**: 100% complete - All core DSL features implemented and tested
-- 🔄 **Phase 2**: 0% complete - Ready to begin Hydra integration
+- 🔄 **Phase 2**: 0% complete - Ready to begin advanced features
 - 📊 **Overall Progress**: ~25% complete (Phase 1 of 4 phases)
 
 ## Problem Statement
@@ -85,7 +85,7 @@ The Lily Petal Workflow System addresses these needs by providing a declarative,
 - **CLI parity**: All core commands (`compose`, `sync`, `run`, `verify`, `diff`, `lock refresh`, `upgrade`, `explain`) implemented
 - **Cross-platform**: Shell quoting validated on Windows/macOS/Linux
 - **CI-ready**: Example workflow runs clean in GitHub Actions matrix
-- **Hydra hidden**: Users can compose with profiles/overrides without learning Hydra
+- **Simple composition**: Users can compose with profiles/overlays using simple syntax
 - **Semantic diff**: `lily diff` highlights step/pin changes and cache impacts
 
 ## Technical Design
@@ -103,7 +103,7 @@ The Lily Petal Workflow System consists of three main components:
 #### 1. Petal DSL Parser & Validator
 - **Schema**: Pydantic models for strong type validation
 - **Templating**: Jinja2 with constrained sandbox (whitelisted filters only)
-- **Composition**: Hydra-based configuration composition with extends/overlays/profiles
+- **Composition**: Native configuration composition with extends/overlays/profiles
 - **Expression Language**: Micro-grammar for `if:` conditions (compiled at compose-time)
 
 #### 2. Lock File System
@@ -123,9 +123,9 @@ The Lily Petal Workflow System consists of three main components:
 - **Flags**: `--locked`, `--frozen`, `--profile`, `--overlay`
 - **Shell**: Interactive prompt with command completion and syntax highlighting
 
-### Configuration Composition (Hydra-based)
+### Configuration Composition (Native)
 
-The Lily Petal system uses **Hydra** for configuration composition, providing a powerful yet hidden abstraction for users. The composition system supports:
+The Lily Petal system uses native configuration composition, providing a powerful yet simple abstraction for users. The composition system supports:
 
 #### Configuration Layout
 ```
@@ -156,13 +156,13 @@ project/
   - Conflict detection for duplicate IDs with incompatible shapes
   - DAG validation with cycle detection after merge
 
-#### Hydra Integration
-- **Hidden from Users**: Hydra is used internally but users don't need to learn Hydra syntax
+#### Native Integration
+- **Simple for Users**: Native composition is used internally with simple syntax
 - **Compose-time Processing**: All composition happens during `lily compose` phase
 - **Deterministic Output**: Single-pass composition ensures reproducible results
 - **CLI Flags**: `--profile=<name>` and `--overlay=<path>` for composition control
-- **Matrix Sweeps**: `-m` flag enables Hydra's hidden sweep functionality for parameter exploration
-- **Lock File Metadata**: Lock files include `mode: "hydra+native"` in composer metadata
+- **Matrix Sweeps**: `-m` flag enables native sweep functionality for parameter exploration
+- **Lock File Metadata**: Lock files include `mode: "native"` in composer metadata
 
 ### Data Models
 
@@ -302,17 +302,17 @@ class LockFile(BaseModel):
   - [x] Implement comprehensive workflow validation
 
 ### Phase 2: Composition & Planning 🔄 **IN PROGRESS** (Week 3-4)
-- [ ] **Hydra Integration** (Next Priority)
-  - [ ] Set up Hydra configuration management system
-  - [ ] Implement Hydra-based composition engine
+- [ ] **Advanced Features** (Next Priority)
+  - [ ] Set up native configuration management system
+  - [ ] Implement native composition engine
   - [ ] Create configuration layout structure (flows/, profiles/, adapters/)
-  - [ ] Add Hydra sweep functionality for matrix operations
-  - [ ] Implement `mode: "hydra+native"` metadata in lock files
+  - [ ] Add native sweep functionality for matrix operations
+  - [ ] Implement `mode: "native"` metadata in lock files
 
 - [ ] **Composition Engine**
-  - [ ] Implement `extends:` single base file support via Hydra
+  - [ ] Implement `extends:` single base file support
   - [ ] Add `overlays:` ordered list of patches with right-most wins
-  - [ ] Create `profiles:` named parameter sets with Hydra config groups
+  - [ ] Create `profiles:` named parameter sets with native config groups
   - [ ] Implement merge rules for maps and step lists by `id`
   - [ ] Add `!append` directive support for step list merging
 
@@ -497,17 +497,17 @@ class LockFile(BaseModel):
   - [x] Implement comprehensive workflow validation
 
 ### Composition & Planning
-- [ ] **Hydra Configuration System**
-  - [ ] Set up Hydra dependency and configuration
-  - [ ] Create Hydra-based composition engine
+- [ ] **Native Configuration System**
+  - [ ] Set up native configuration management
+  - [ ] Create native composition engine
   - [ ] Implement configuration layout structure
-  - [ ] Add Hydra sweep functionality for matrix operations
-  - [ ] Create Hydra config validation and error handling
+  - [ ] Add native sweep functionality for matrix operations
+  - [ ] Create native config validation and error handling
 
 - [ ] **Composition Engine**
-  - [ ] Implement base file extension (`extends:`) via Hydra
+  - [ ] Implement base file extension (`extends:`)
   - [ ] Create overlay merging with conflict resolution
-  - [ ] Add profile system for parameter sets using Hydra config groups
+  - [ ] Add profile system for parameter sets using native config groups
   - [ ] Implement step merging by ID with append support
   - [ ] Create composition validation and error reporting
 

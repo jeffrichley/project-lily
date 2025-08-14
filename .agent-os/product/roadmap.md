@@ -11,7 +11,7 @@
 
 ### Priority 2: Configuration System ✅ COMPLETE
 - [x] Global configuration at `~/.lily/config.toml`
-- [x] Configuration validation with Pydantic
+- [x] Configuration validation with dataclasses
 - [x] Default configuration generation
 - [x] Environment variable support for API keys
 

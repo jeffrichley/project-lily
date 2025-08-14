@@ -85,7 +85,7 @@ project/
 - `--locked`: do not regenerate the lock; error if sources changed (stale) unless `--allow-stale`.
 - `--frozen`: do not sync the environment (use whatever is already present).
 - `--profile=<name>` / `--overlay=<path>`: authoring/compose-time only.
-- `-m`: sweep at compose-time (Hydra hidden internally is allowed).
+- `-m`: sweep at compose-time (matrix operations supported).
 
 ### 3.4 Typical Flows
 - **Day-to-day dev**: `lily run flows/foo.petal` → auto-compose temp lock + auto-sync + execute.
@@ -183,7 +183,7 @@ provenance:
       mtime: "2025-08-13T12:20:00Z"
   composer:
     tool: "lily"
-    mode: "hydra+native"
+    mode: "native"
     composed_at: "2025-08-13T12:34:56Z"
 spec_hash: "sha256:...resolved-ast..."
 
@@ -395,7 +395,7 @@ jobs:
 6. **CLI parity**: `compose`, `sync`, `run`, `verify`, `diff`, `lock refresh`, `upgrade`, `explain` implemented with documented flags.
 7. **Cross-platform**: shell quoting validated on Windows/macOS/Linux.
 8. **CI-ready**: Example workflow runs clean in a GitHub Actions matrix.
-9. **Hydra hidden**: Users can compose with profiles/overrides without learning Hydra.
+9. **Simple composition**: Users can compose with profiles/overlays using simple syntax.
 10. **Semantic diff**: `lily diff` highlights step/pin changes and cache impacts.
 
 ---
@@ -413,7 +413,7 @@ jobs:
 ## 16. Roadmap
 
 - **v1.0**: Core DSL, planner, lock, adapters (process/docker/python/http), uv-style CLI, observability, security baseline.
-- **v1.1**: Native composition (extends/overlays/profiles) without Hydra; defaults extractor; step templates; registry signatures.
+- **v1.1**: Native composition (extends/overlays/profiles); defaults extractor; step templates; registry signatures.
 - **v1.2**: Remote artifact stores (S3/GCS); OTel spans; richer matrix sweeps; reusable step libraries.
 - **v1.3**: Multi-run orchestrators (local pool, HPC adapters), run cancellation & checkpoints.
 

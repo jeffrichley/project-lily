@@ -7,14 +7,10 @@ import re
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from jinja2 import Environment, StrictUndefined, TemplateError
 
 from lily.types import TemplateValue
-
-if TYPE_CHECKING:
-    pass
 
 
 class PetalTemplateError(Exception):
