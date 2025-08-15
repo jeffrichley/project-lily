@@ -9,6 +9,9 @@ from lily.cli.commands import compose, config, run, start, version
 from lily.cli.utils import get_console
 from lily.compose.engine import CompositionEngine
 
+# Module-level variables for Typer arguments
+FILE_ARG = typer.Argument(..., help="Petal file to inspect")
+
 # Create Typer app
 app = typer.Typer(
     name="lily",
@@ -27,18 +30,16 @@ app.command()(compose.compose)
 
 @app.command()
 def info(
-    file: Path = typer.Argument(..., help="Petal file to inspect"),
+    file: Path = FILE_ARG,
 ) -> None:
     """Show information about a Petal workflow."""
     try:
-        if file is None:
-            typer.echo("Please provide a Petal file to inspect", err=True)
-            typer.echo("Usage: lily info <file>", err=True)
-            sys.exit(1)
 
         # Show composition information
         engine = CompositionEngine()
-        composition_info = engine.get_composition_info(file)
+        composition_info: dict[str, dict[str, object]] = engine.get_composition_info(
+            file
+        )
 
         print("Petal Information:")
         print(f"Name: {composition_info['petal']['name']}")

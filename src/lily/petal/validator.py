@@ -266,15 +266,14 @@ class PetalValidator:
         errors = []
 
         for step in petal.steps:
-            if step.cache is not None:
+            if step.cache is not None and "policy" in step.cache:
                 # Validate cache policy
-                if "policy" in step.cache:
-                    policy = step.cache["policy"]
-                    valid_policies = {"auto", "never", "read-only", "write-only"}
-                    if policy not in valid_policies:
-                        errors.append(
-                            f"Step '{step.id}' cache policy must be one of {valid_policies}, got '{policy}'"
-                        )
+                policy = step.cache["policy"]
+                valid_policies = {"auto", "never", "read-only", "write-only"}
+                if policy not in valid_policies:
+                    errors.append(
+                        f"Step '{step.id}' cache policy must be one of {valid_policies}, got '{policy}'"
+                    )
 
         return errors
 

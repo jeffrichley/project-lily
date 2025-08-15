@@ -3,6 +3,8 @@
 from pathlib import Path
 
 from lily.petal.models import Petal
+from lily.petal.parser import PetalParser
+from lily.petal.validator import PetalValidator
 
 
 class CompositionEngine:
@@ -10,16 +12,15 @@ class CompositionEngine:
 
     def __init__(self) -> None:
         """Initialize the composition engine."""
-        self._parser = None  # Lazy loading
-        self.parser = None  # Public parser attribute for tests
+        self._parser: PetalParser | None = None  # Lazy loading
+        self.parser: PetalParser | None = None  # Public parser attribute for tests
 
-    def _get_parser(self) -> "PetalParser":
+    def _get_parser(self) -> PetalParser:
         """Get parser instance with lazy loading."""
         if self._parser is None:
-            from lily.petal.parser import PetalParser
-
             self._parser = PetalParser()
             self.parser = self._parser  # Set public attribute
+        assert self._parser is not None  # Help mypy understand this is never None
         return self._parser
 
     def compose_petal(self, petal_file: str | Path) -> Petal:
@@ -36,8 +37,6 @@ class CompositionEngine:
         petal = parser.parse_file(petal_file)
 
         # Validate the workflow
-        from lily.petal.validator import PetalValidator
-
         validator = PetalValidator()
         is_valid, errors = validator.validate(petal)
 
@@ -46,7 +45,9 @@ class CompositionEngine:
 
         return petal
 
-    def get_composition_info(self, petal_file: str | Path) -> dict:
+    def get_composition_info(
+        self, petal_file: str | Path
+    ) -> dict[str, dict[str, object | bool | list[str]]]:
         """Get information about the Petal workflow without executing it.
 
         Args:
@@ -60,7 +61,7 @@ class CompositionEngine:
         petal = parser.parse_file(petal_file)
 
         # Create info structure
-        info = {
+        info: dict[str, dict[str, object | bool | list[str]]] = {
             "petal": {
                 "name": petal.name,
                 "description": petal.description,
@@ -75,8 +76,6 @@ class CompositionEngine:
         }
 
         # Validate composition
-        from lily.petal.validator import PetalValidator
-
         validator = PetalValidator()
         is_valid, errors = validator.validate(petal)
         info["composition"]["valid"] = is_valid

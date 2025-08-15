@@ -77,10 +77,10 @@ class DockerStep(StepBase):
                 try:
                     int(host_port)
                     int(container_port)
-                except ValueError:
+                except ValueError as err:
                     raise ValueError(
                         f"Invalid port mapping: {host_port}:{container_port}"
-                    )
+                    ) from err
 
 
 @dataclass
@@ -91,7 +91,7 @@ class HTTPRequestStep(StepBase):
     method: str = "GET"
     headers: dict[str, str] | None = None
     body: str | None = None
-    timeout: int = 30
+    timeout: str = "30s"
     retry_count: int = 3
 
     def __post_init__(self) -> None:
@@ -105,8 +105,10 @@ class HTTPRequestStep(StepBase):
         if self.method not in ["GET", "POST", "PUT", "DELETE", "PATCH"]:
             raise ValueError(f"Unsupported HTTP method: {self.method}")
 
-        if self.timeout <= 0:
-            raise ValueError("Timeout must be positive")
+        if self.timeout and not self.timeout.endswith(("s", "m", "h", "d")):
+            raise ValueError(
+                "Timeout must be in format: <number><unit> where unit is s, m, h, or d"
+            )
 
         if self.retry_count < 0:
             raise ValueError("Retry count must be non-negative")

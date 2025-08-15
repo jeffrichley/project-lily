@@ -154,14 +154,14 @@ class PetalParser:
         # Add new:
         self.config_hierarchy = ConfigHierarchy()
         self.composition_engine = CompositionEngine()
-    
+
     def parse_file(self, file_path: str | Path) -> Petal:
         # Existing parsing logic...
-        
+
         # Add new composition logic:
         if self.should_use_hydra_composition(petal):
             petal = self.composition_engine.compose(petal)
-        
+
         return petal
 ```
 
@@ -534,7 +534,7 @@ The incremental approach allowed us to:
 
 **Current Status:**
 - ✅ **Phase 1: Foundation Preparation** - 100% Complete
-- ✅ **Phase 2: Hydra Integration Layer** - 100% Complete  
+- ✅ **Phase 2: Hydra Integration Layer** - 100% Complete
 - ✅ **Phase 3: CLI Integration** - 100% Complete
 - ⏳ **Phase 4: Advanced Features** - Ready to begin
 

@@ -45,7 +45,7 @@ def create_default_db_config(config_dir: Path, db_type: str) -> None:
   user: "lily_user"
   password: "{{ env.DB_PASSWORD }}"
   database: "lily_workflows"
-  
+
 env:
   DB_TYPE: "mysql"
   DB_HOST: "localhost"
@@ -58,7 +58,7 @@ env:
   user: "lily_user"
   password: "{{ env.DB_PASSWORD }}"
   database: "lily_workflows"
-  
+
 env:
   DB_TYPE: "postgresql"
   DB_HOST: "localhost"
@@ -67,7 +67,7 @@ env:
         "sqlite": """db:
   type: "sqlite"
   path: "{{ project_root }}/data/workflows.db"
-  
+
 env:
   DB_TYPE: "sqlite"
   DB_PATH: "{{ project_root }}/data/workflows.db"
@@ -92,11 +92,11 @@ def create_default_profile_config(config_dir: Path, profile_name: str) -> None:
   debug: true
   dry_run: false
   parallel: false
-  
+
 env:
   LILY_LOG_LEVEL: "DEBUG"
   LILY_CACHE_ENABLED: "true"
-  
+
 params:
   max_workers: 2
   timeout: "30s"
@@ -107,11 +107,11 @@ params:
   debug: false
   dry_run: false
   parallel: true
-  
+
 env:
   LILY_LOG_LEVEL: "INFO"
   LILY_CACHE_ENABLED: "false"
-  
+
 params:
   max_workers: 4
   timeout: "300s"
@@ -122,11 +122,11 @@ params:
   debug: false
   dry_run: false
   parallel: true
-  
+
 env:
   LILY_LOG_LEVEL: "WARNING"
   LILY_CACHE_ENABLED: "true"
-  
+
 params:
   max_workers: 16
   timeout: "1800s"
@@ -149,33 +149,33 @@ def create_default_workflow_config(config_dir: Path, workflow_name: str) -> None
     workflow_configs = {
         "video_processing": """workflows:
   type: "video_processing"
-  
+
 params:
   input_format: "mp4"
   output_format: "mp4"
   quality: "high"
   resolution: "1080p"
-  
+
 env:
   FFMPEG_PATH: "/usr/bin/ffmpeg"
   FFPROBE_PATH: "/usr/bin/ffprobe"
-  
+
 vars:
   output_dir: "output/{{ hash(params.input_file) }}"
   temp_dir: "{{ output_dir }}/temp"
 """,
         "data_pipeline": """workflows:
   type: "data_pipeline"
-  
+
 params:
   batch_size: 1000
   parallel: true
   retry_failed: true
-  
+
 env:
   DATA_SOURCE: "{{ env.DATA_SOURCE }}"
   DATA_SINK: "{{ env.DATA_SINK }}"
-  
+
 vars:
   batch_dir: "{{ temp_dir }}/batches"
   results_dir: "{{ output_dir }}/results"
@@ -197,22 +197,22 @@ def create_default_adapter_config(config_dir: Path, adapter_name: str) -> None:
     adapter_configs = {
         "process": """adapters:
   type: "process"
-  
+
 env:
   PROCESS_TIMEOUT: "300s"
   PROCESS_WORKING_DIR: "{{ project_root }}"
-  
+
 params:
   capture_output: true
   check_returncode: true
 """,
         "docker": """adapters:
   type: "docker"
-  
+
 env:
   DOCKER_IMAGE: "lily/petal:latest"
   DOCKER_NETWORK: "lily-network"
-  
+
 params:
   privileged: false
   remove: true
@@ -221,11 +221,11 @@ params:
 """,
         "http": """adapters:
   type: "http"
-  
+
 env:
   HTTP_TIMEOUT: "30s"
   HTTP_RETRIES: 3
-  
+
 params:
   verify_ssl: true
   follow_redirects: true

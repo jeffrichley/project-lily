@@ -1,7 +1,7 @@
-"""Type-safe configuration for Petal DSL.
+"""Direct YAML to Petal conversion with strategic type safety.
 
-This module provides a Google-style approach to YAML configuration parsing that balances
-type safety with practical constraints from external libraries.
+This module provides direct YAML → Petal conversion with strategic type ignores
+only at the external YAML parsing boundary.
 
 TYPE SAFETY STRATEGY:
 ====================
@@ -15,8 +15,7 @@ TYPE SAFETY STRATEGY:
 3. **Runtime Validation**: Our models (Param, IODecl, StepBase, Petal) validate all inputs
    at runtime, providing safety despite type system limitations.
 
-4. **Type-Safe Configuration**: The PetalConfig class uses proper types throughout,
-   maintaining type safety in our own code.
+4. **Direct Conversion**: YAML → Petal with no intermediate config objects.
 
 WHY TYPE IGNORES ARE NECESSARY:
 ===============================
@@ -37,7 +36,6 @@ This approach follows Google's pattern of strategic type ignores at external bou
 while maintaining strict type safety throughout the rest of the codebase.
 """
 
-from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -46,28 +44,10 @@ import yaml
 from lily.petal.models import IODecl, Param, Petal, StepBase
 
 
-@dataclass
-class PetalConfig:
-    """Type-safe Petal configuration."""
+def load_petal(file_path: Path) -> Petal:
+    """Load Petal directly from YAML with strategic type safety.
 
-    petal: str
-    name: str
-    description: str | None = None
-    extends: str | None = None  # NEW: Support for inheritance
-    composition_enabled: bool = True  # NEW: Explicit composition flag
-    params: dict[str, dict[str, Any]] = field(default_factory=dict)
-    env: dict[str, str] = field(default_factory=dict)
-    vars: dict[str, str] = field(default_factory=dict)
-    steps: list[dict[str, Any]] = field(default_factory=list)
-    outputs: list[dict[str, Any]] = field(default_factory=list)
-    on_error: list[dict[str, Any]] = field(default_factory=list)
-    artifacts: dict[str, Any] | None = None
-
-
-def load_petal_config(file_path: Path) -> PetalConfig:
-    """Load Petal configuration using YAML with type safety.
-
-    This provides compile-time and runtime type safety.
+    This provides compile-time and runtime type safety with minimal complexity.
     """
     # Load YAML file
     with open(file_path) as f:
@@ -83,43 +63,43 @@ def load_petal_config(file_path: Path) -> PetalConfig:
     if config_data["petal"] != "1":
         raise ValueError(f"Unsupported Petal version: {config_data['petal']}")
 
-    # Convert to our typed config with proper type casting
-    return PetalConfig(
-        petal=str(config_data["petal"]),
+    # Convert directly to Petal with strategic type ignores
+    return Petal(
+        petal="1",  # We already validated this above
         name=str(config_data["name"]),
         description=(
             str(config_data.get("description"))
             if config_data.get("description")
             else None
         ),
-        params=dict(config_data.get("params", {})),
+        extends=config_data.get("extends"),
+        composition_enabled=config_data.get("composition_enabled", True),
+        params=_convert_params(config_data.get("params", {})),
         env=dict(config_data.get("env", {})),
         vars=dict(config_data.get("vars", {})),
-        steps=list(config_data.get("steps", [])),
-        outputs=list(config_data.get("outputs", [])),
-        on_error=list(config_data.get("on_error", [])),
+        steps=_convert_steps(config_data.get("steps", [])),
+        outputs=_convert_outputs(config_data.get("outputs", [])),
+        on_error=_convert_steps(config_data.get("on_error", [])),
         artifacts=config_data.get("artifacts"),
     )
 
 
-def convert_config_to_petal(config: PetalConfig) -> Petal:
-    """Convert PetalConfig to Petal model with proper type conversion.
-
-    This function handles the conversion from the configuration format to the
-    runtime model format, ensuring type safety throughout the process.
-    """
-    # Convert parameters to Param objects
+def _convert_params(params_config: dict[str, Any]) -> dict[str, Param]:
+    """Convert parameters configuration to Param objects."""
     params = {}
-    for param_name, param_data in config.params.items():
+    for param_name, param_data in params_config.items():
         if isinstance(param_data, dict):
             params[param_name] = Param(**param_data)
         else:
             # Handle simple string type case
-            params[param_name] = Param(type=str(param_data))
+            params[param_name] = Param(type="str")  # Default to str for simple values
+    return params
 
-    # Convert steps to StepBase objects
+
+def _convert_steps(steps_config: list[dict[str, Any]]) -> list[StepBase]:
+    """Convert steps configuration to StepBase objects."""
     steps = []
-    for step_data in config.steps:
+    for step_data in steps_config:
         if not isinstance(step_data, dict):
             raise ValueError(f"Step must be a dictionary, got {type(step_data)}")
 
@@ -131,27 +111,12 @@ def convert_config_to_petal(config: PetalConfig) -> Petal:
             )
 
         # Convert inputs/outputs to IODecl objects
-        inputs = {}
-        for input_name, input_data in step_data.get("inputs", {}).items():
-            if isinstance(input_data, dict):
-                inputs[input_name] = IODecl(**input_data)
-            else:
-                inputs[input_name] = IODecl(
-                    type=str(input_data) if input_data else None
-                )
-
-        outputs = {}
-        for output_name, output_data in step_data.get("outputs", {}).items():
-            if isinstance(output_data, dict):
-                outputs[output_name] = IODecl(**output_data)
-            else:
-                outputs[output_name] = IODecl(
-                    type=str(output_data) if output_data else None
-                )
+        inputs = _convert_io_declarations(step_data.get("inputs", {}))
+        outputs = _convert_io_declarations(step_data.get("outputs", {}))
 
         step = StepBase(
             id=str(step_data["id"]),
-            uses=str(step_data["uses"]),
+            uses=str(step_data["uses"]),  # type: ignore
             needs=step_data.get("needs", []),
             if_=step_data.get("if_"),
             timeout=step_data.get("timeout"),
@@ -165,19 +130,20 @@ def convert_config_to_petal(config: PetalConfig) -> Petal:
             with_=step_data.get("with_"),
         )
         steps.append(step)
+    return steps
 
-    # Create Petal object
-    return Petal(
-        petal=config.petal,
-        name=config.name,
-        description=config.description,
-        extends=config.extends,
-        composition_enabled=config.composition_enabled,
-        params=params,
-        env=config.env,
-        vars=config.vars,
-        steps=steps,
-        outputs=config.outputs,
-        on_error=config.on_error,
-        artifacts=config.artifacts,
-    )
+
+def _convert_outputs(outputs_config: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Convert outputs configuration (keeping as dict for now)."""
+    return outputs_config
+
+
+def _convert_io_declarations(io_config: dict[str, Any]) -> dict[str, IODecl]:
+    """Convert input/output declarations to IODecl objects."""
+    declarations = {}
+    for name, data in io_config.items():
+        if isinstance(data, dict):
+            declarations[name] = IODecl(**data)
+        else:
+            declarations[name] = IODecl(type="str" if data else None)  # Default to str
+    return declarations

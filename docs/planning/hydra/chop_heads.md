@@ -92,11 +92,11 @@ def info(file: Path = typer.Option(None, help="Petal file to inspect")):
 def test_compose_command_success():
     """Test compose command with valid petal file."""
     # Simple test without complex mocking
-    
+
 def test_info_command_success():
     """Test info command with valid petal file."""
     # Simple test without complex mocking
-    
+
 def test_compose_command_invalid_file():
     """Test compose command with invalid file."""
     # Simple error handling test
