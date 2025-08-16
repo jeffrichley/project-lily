@@ -1,0 +1,71 @@
+version: 0.1
+name: acme_demo
+description: Shell → LLM → DB → Slack → Twitter workflow
+params:
+  prompt: "Analyze the current directory structure"
+  cmd: "ls -la"
+defaults:
+  llm.model: gpt-4o-mini
+  retry:
+    max: 2
+    backoff: 1.5
+env:
+  SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL
+  TWITTER_TOKEN: $TWITTER_BEARER_TOKEN
+secrets:
+  - SLACK_WEBHOOK_URL
+  - TWITTER_BEARER_TOKEN
+steps:
+  - id: shell.run#1
+    uses: shell.run
+    reads: [cmd]
+    writes: [shell_out, shell_rc, shell_err]
+    with:
+      cmd: "{{ cmd }}"
+      cwd: "."
+    when: null
+    if_error: fail
+
+  - id: llm.generate#1
+    uses: llm.generate
+    reads: [prompt, shell_out]
+    writes: [llm_query, text]
+    with:
+      model: gpt-4o-mini
+      prompt: "{{ prompt }}\n---\nDirectory listing:\n{{ shell_out|truncate(800) }}"
+      temperature: 0.1
+      max_tokens: 500
+    when: null
+    if_error: fail
+
+  - id: sqlite.query#1
+    uses: sqlite.query
+    reads: [llm_query]
+    writes: [rows, row_count]
+    with:
+      db_path: "app.db"
+      sql: "SELECT id, name, created_at FROM items WHERE name LIKE :query ORDER BY created_at DESC LIMIT 10"
+      params:
+        query: "%{{ llm_query|truncate(50) }}%"
+    when: null
+    if_error: skip
+
+  - id: slack.post#1
+    uses: slack.post
+    reads: [row_count, llm_query]
+    writes: [slack_response]
+    with:
+      webhook_env: SLACK_WEBHOOK_URL
+      text: "Found {{ row_count }} matching items for query '{{ llm_query|truncate(100) }}'"
+    when: "{{ row_count|rows > 0 }}"
+    if_error: skip
+
+  - id: twitter.post#1
+    uses: twitter.post
+    reads: [text]
+    writes: [twitter_response]
+    with:
+      token_env: TWITTER_BEARER_TOKEN
+      text: "Update: {{ text|truncate(200) }}"
+    when: null
+    if_error: skip

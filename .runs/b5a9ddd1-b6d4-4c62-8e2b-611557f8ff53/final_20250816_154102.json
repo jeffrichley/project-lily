@@ -1,0 +1,67 @@
+{
+  "run_id": "b5a9ddd1-b6d4-4c62-8e2b-611557f8ff53",
+  "timestamp": "2025-08-16T15:41:02.342163+00:00",
+  "params": {
+    "input": "test"
+  },
+  "state": {
+    "message": "hello",
+    "result": 4
+  },
+  "step_status": {
+    "step1": "completed",
+    "step2": "completed"
+  },
+  "step_results": {
+    "step1": {
+      "message": "hello"
+    },
+    "step2": {
+      "result": 4
+    }
+  },
+  "events": [
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:41:02.338223+00:00",
+      "step_id": "step1",
+      "status": "running"
+    },
+    {
+      "type": "step_completed",
+      "timestamp": "2025-08-16T15:41:02.338294+00:00",
+      "step_id": "step1",
+      "outputs": {
+        "message": "hello"
+      }
+    },
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:41:02.338311+00:00",
+      "step_id": "step1",
+      "status": "completed"
+    },
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:41:02.340240+00:00",
+      "step_id": "step2",
+      "status": "running"
+    },
+    {
+      "type": "step_completed",
+      "timestamp": "2025-08-16T15:41:02.340375+00:00",
+      "step_id": "step2",
+      "outputs": {
+        "result": 4
+      }
+    },
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:41:02.340392+00:00",
+      "step_id": "step2",
+      "status": "completed"
+    }
+  ],
+  "current_step": null,
+  "step_id": null
+}

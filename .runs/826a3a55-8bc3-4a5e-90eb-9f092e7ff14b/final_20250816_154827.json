@@ -1,0 +1,26 @@
+{
+  "run_id": "826a3a55-8bc3-4a5e-90eb-9f092e7ff14b",
+  "timestamp": "2025-08-16T15:48:27.798816+00:00",
+  "params": {},
+  "state": {},
+  "step_status": {
+    "step1": "skipped"
+  },
+  "step_results": {},
+  "events": [
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:48:27.798537+00:00",
+      "step_id": "step1",
+      "status": "running"
+    },
+    {
+      "type": "step_status_changed",
+      "timestamp": "2025-08-16T15:48:27.798800+00:00",
+      "step_id": "step1",
+      "status": "skipped"
+    }
+  ],
+  "current_step": null,
+  "step_id": null
+}

@@ -1,16 +1,11 @@
 """Main CLI entry point for Lily."""
 
 import sys
-from pathlib import Path
 
 import typer
 
-from lily.cli.commands import compose, config, run, start, version
+from lily.cli.commands import config, start, version
 from lily.cli.utils import get_console
-from lily.compose.engine import CompositionEngine
-
-# Module-level variables for Typer arguments
-FILE_ARG = typer.Argument(..., help="Petal file to inspect")
 
 # Create Typer app
 app = typer.Typer(
@@ -22,47 +17,8 @@ app = typer.Typer(
 
 # Add commands from commands directory
 app.command()(start.start)
-app.command()(run.run)
 app.command()(config.config)
 app.command()(version.version)
-app.command()(compose.compose)
-
-
-@app.command()
-def info(
-    file: Path = FILE_ARG,
-) -> None:
-    """Show information about a Petal workflow."""
-    try:
-
-        # Show composition information
-        engine = CompositionEngine()
-        composition_info: dict[str, dict[str, object]] = engine.get_composition_info(
-            file
-        )
-
-        print("Petal Information:")
-        print(f"Name: {composition_info['petal']['name']}")
-        print(f"Description: {composition_info['petal']['description']}")
-        print(f"Extends: {composition_info['petal']['extends']}")
-        print(
-            f"Composition enabled: {composition_info['petal']['composition_enabled']}"
-        )
-        print(f"Parameters: {composition_info['petal']['parameters']}")
-        print(
-            f"Environment variables: {composition_info['petal']['environment_variables']}"
-        )
-        print(f"Variables: {composition_info['petal']['variables']}")
-        print(f"Steps: {composition_info['petal']['steps']}")
-
-        print("\nComposition Status:")
-        print(f"Valid: {composition_info['composition']['valid']}")
-        if not composition_info["composition"]["valid"]:
-            print(f"Errors: {composition_info['composition']['errors']}")
-
-    except Exception as e:
-        typer.echo(f"Error getting Petal workflow info: {e}", err=True)
-        sys.exit(1)
 
 
 def main() -> None:

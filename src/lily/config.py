@@ -29,28 +29,9 @@ class LilyConfig:
         default=0.7, metadata={"description": "Temperature for model responses"}
     )
 
-    # Directory Configuration
-    commands_dir: Path = field(
-        default=Path("~/.lily/commands"), metadata={"description": "Commands directory"}
-    )
-    rules_dir: Path = field(
-        default=Path("~/.lily/rules"), metadata={"description": "Rules directory"}
-    )
-    sessions_dir: Path = field(
-        default=Path("~/.lily/sessions"), metadata={"description": "Sessions directory"}
-    )
-
     # Theme Configuration
     theme: ThemeName = field(
         default=ThemeName.IRIS_BLOOM, metadata={"description": "UI theme"}
-    )
-
-    # Shell Configuration
-    history_size: int = field(
-        default=1000, metadata={"description": "Command history size"}
-    )
-    auto_complete: bool = field(
-        default=True, metadata={"description": "Enable auto-completion"}
     )
 
     def __post_init__(self) -> None:
@@ -74,11 +55,6 @@ class LilyConfig:
         if self.max_tokens < 1 or self.max_tokens > 32000:
             raise ValueError("Max tokens must be between 1 and 32000")
 
-        # Expand user paths
-        self.commands_dir = Path(self.commands_dir).expanduser()
-        self.rules_dir = Path(self.rules_dir).expanduser()
-        self.sessions_dir = Path(self.sessions_dir).expanduser()
-
     def to_dict(self) -> dict[str, JsonValue]:
         """Convert config to dictionary for serialization."""
         return {
@@ -86,12 +62,7 @@ class LilyConfig:
             "model": self.model,
             "max_tokens": self.max_tokens,
             "temperature": self.temperature,
-            "commands_dir": str(self.commands_dir),
-            "rules_dir": str(self.rules_dir),
-            "sessions_dir": str(self.sessions_dir),
             "theme": self.theme.value,
-            "history_size": self.history_size,
-            "auto_complete": self.auto_complete,
         }
 
 
@@ -122,12 +93,6 @@ class ConfigManager:
                 for key, value in raw_config_data.items():
                     if key == "theme" and isinstance(value, str):
                         config_data[key] = ThemeName(value)
-                    elif key in [
-                        "commands_dir",
-                        "rules_dir",
-                        "sessions_dir",
-                    ] and isinstance(value, str):
-                        config_data[key] = Path(value)
                     else:
                         # Type ignore needed because JsonValue includes None, list, dict types
                         # that we don't handle explicitly, but we know the remaining values
@@ -199,12 +164,7 @@ class ConfigManager:
             model="gpt-4",
             max_tokens=4000,
             temperature=0.7,
-            commands_dir=Path("~/.lily/commands"),
-            rules_dir=Path("~/.lily/rules"),
-            sessions_dir=Path("~/.lily/sessions"),
             theme=ThemeName.IRIS_BLOOM,
-            history_size=1000,
-            auto_complete=True,
         )
 
         # Save default config
@@ -219,20 +179,6 @@ class ConfigManager:
                 self.console.print("[error]OpenAI API key is required[/error]")
                 return False
 
-            # Check if directories can be created
-            for dir_path in [
-                config.commands_dir,
-                config.rules_dir,
-                config.sessions_dir,
-            ]:
-                try:
-                    dir_path.mkdir(parents=True, exist_ok=True)
-                except Exception as e:
-                    self.console.print(
-                        f"[error]Cannot create directory {dir_path}: {e}[/error]"
-                    )
-                    return False
-
             self.console.print("[success]Configuration validation passed[/success]")
             return True
         except Exception as e:
@@ -246,12 +192,7 @@ class ConfigManager:
             f"[text]Model:[/text] [command]{config.model}[/command]\n"
             f"[text]Max Tokens:[/text] [command]{config.max_tokens}[/command]\n"
             f"[text]Temperature:[/text] [command]{config.temperature}[/command]\n"
-            f"[text]Theme:[/text] [command]{config.theme.value}[/command]\n"
-            f"[text]Commands Dir:[/text] [path]{config.commands_dir}[/path]\n"
-            f"[text]Rules Dir:[/text] [path]{config.rules_dir}[/path]\n"
-            f"[text]Sessions Dir:[/text] [path]{config.sessions_dir}[/path]\n"
-            f"[text]History Size:[/text] [command]{config.history_size}[/command]\n"
-            f"[text]Auto Complete:[/text] [command]{config.auto_complete}[/command]",
+            f"[text]Theme:[/text] [command]{config.theme.value}[/command]",
             title="Configuration",
             border_style="accent",
         )

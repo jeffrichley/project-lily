@@ -1,110 +1,90 @@
-# Lily Examples
+# Petal Examples
 
-This directory contains example petal workflow files that demonstrate how to use Lily's simplified workflow automation system.
+This directory contains examples of Petal workflow files demonstrating both the canonical and short-form formats.
 
-## Overview
+## File Formats
 
-All examples use the native petal format without any external configuration dependencies. The examples show various use cases and patterns for creating workflows.
+### Canonical Format (`canonical_example.yaml`)
+The fully expanded, explicit format that the Petal runner executes directly. Contains:
+- Explicit step IDs (`shell.run#1`, `llm.generate#1`)
+- Declared `reads` and `writes` for each step
+- All metadata explicitly defined
+- No implicit inference or shortcuts
 
-## Available Examples
+### Short-Form Format (`.petal` files)
+The ergonomic authoring format that gets compiled to canonical form. Features:
+- Implicit step IDs (auto-generated from tool name + order)
+- Inferred `reads` and `writes` from templates and tool contracts
+- Compact syntax with modifiers in parentheses
+- Macros for reusable step groups
+- Profiles for environment-specific configurations
 
-### Basic Examples
+## Examples
 
-- **`hello_world.petal`** - Simple greeting workflow with parameter substitution
-- **`test_hierarchy.petal`** - Test workflow demonstrating hierarchical configuration
+### 1. Basic Workflow (`short_form_example.petal` / `canonical_example.yaml`)
+A simple end-to-end workflow that:
+1. Runs a shell command to list directory contents
+2. Uses an LLM to analyze the output
+3. Queries a SQLite database for matching items
+4. Posts results to Slack (if any found)
+5. Posts a summary to Twitter
 
-### Real-World Examples
+**Key features demonstrated:**
+- Parameter templating with Jinja2
+- Conditional execution (`when` clauses)
+- Error handling policies (`if_error=skip`)
+- Built-in filters (`truncate`, `rows`)
 
-- **`data_processing.petal`** - CSV data processing workflow with batch processing
-- **`web_scraping.petal`** - Web content scraping workflow with retry logic
-- **`file_backup.petal`** - File and directory backup workflow with compression
-- **`video_processing.petal`** - Complex video processing workflow with multiple steps
+### 2. Advanced Features (`macro_example.petal`)
+Demonstrates more sophisticated Petal capabilities:
+- **Macros**: Reusable step groups (`health_check`, `notify_team`)
+- **Profiles**: Environment-specific configurations (`dev` vs `prod`)
+- **Complex templating**: Multi-line prompts and conditional logic
+- **Python integration**: Calling custom functions with `python.eval`
 
-## Running Examples
-
-### Using the CLI
+## Running the Examples
 
 ```bash
-# Get information about a workflow
-lily info examples/hello_world.petal
+# Validate a short-form file
+petal validate examples/short_form_example.petal
 
-# Dry run a workflow (see what would happen)
-lily compose examples/hello_world.petal --dry-run
+# See the compiled canonical form
+petal explain examples/short_form_example.petal
 
-# Execute a workflow
-lily compose examples/hello_world.petal
+# Run the workflow
+petal run examples/short_form_example.petal
+
+# Run with parameter overrides
+petal run examples/short_form_example.petal -p cmd="ls -la /tmp" -p prompt="Analyze temp directory"
 ```
 
-### Demo Script
+## Key Concepts
 
-Run the demo script to see all examples in action:
+### State Flow
+Each step's output becomes available to subsequent steps via the `state` object:
+- `shell.run` writes `shell_out`, `shell_rc`, `shell_err`
+- `llm.generate` reads `shell_out` and writes `llm_query`, `text`
+- Later steps can reference any previous outputs
 
-```bash
-cd examples
-python demo_workflows.py
-```
+### Error Handling
+- `if_error=fail` (default): Stop execution on error
+- `if_error=skip`: Log error and continue
+- `if_error=retry`: Retry with exponential backoff
 
-## Example Structure
+### Secrets Management
+- Secrets are referenced by name only in files
+- Resolved from environment variables or OS keyring at runtime
+- Automatically redacted in logs and snapshots
 
-Each petal file follows this structure:
+### Templating
+- Jinja2 templates with custom filters
+- Context resolution: `locals → params → state → env → secrets`
+- Built-in helpers: `truncate`, `head`, `lines`, `rows`, `now`, `json`
 
-```yaml
-petal: "1"
-name: "Workflow Name"
-description: "Workflow description"
+## Next Steps
 
-params:
-  # Input parameters with types and validation
-
-vars:
-  # Computed variables
-
-steps:
-  - id: "step_name"
-    uses: "step_type"
-    needs: ["dependencies"]
-    with_:
-      # Step-specific configuration
-    outputs:
-      # Step outputs
-
-outputs:
-  # Workflow outputs
-```
-
-## Key Features Demonstrated
-
-- **Parameter validation** - Required parameters with types and help text
-- **Variable substitution** - Dynamic values using template syntax
-- **Step dependencies** - Sequential and parallel execution
-- **Output handling** - Structured output from steps and workflows
-- **Error handling** - Validation and error checking
-- **Environment variables** - Shell environment configuration
-
-## Migration from Hydra
-
-These examples have been simplified from the previous Hydra-based configuration system:
-
-- ❌ No complex configuration hierarchies
-- ❌ No external YAML configuration files
-- ❌ No Hydra-specific syntax
-- ✅ Simple, direct petal files
-- ✅ Clear parameter definitions
-- ✅ Easy to understand and maintain
-
-## Getting Started
-
-1. Start with `hello_world.petal` to understand the basics
-2. Try `data_processing.petal` for a more complex example
-3. Use `lily info <file>` to inspect workflow details
-4. Use `lily compose <file> --dry-run` to test workflows safely
-
-## Contributing
-
-When adding new examples:
-
-- Keep them focused on a specific use case
-- Include clear parameter documentation
-- Use realistic but simple scenarios
-- Ensure they work without external dependencies
-- Test with both `lily info` and `lily compose --dry-run`
+1. **Install Petal**: Follow the installation instructions in the main README
+2. **Set up secrets**: Configure your environment variables for Slack/Twitter
+3. **Try the examples**: Start with `short_form_example.petal`
+4. **Create your own**: Use these as templates for your workflows
+5. **Explore the LSP**: Install `petal-lsp` for editor integration

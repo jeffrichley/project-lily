@@ -1,0 +1,90 @@
+version: 0.1
+name: macro_demo
+description: Demonstrates macros, profiles, and advanced short-form features
+params:
+  message: "System status update"
+  check_urls: ["https://api.example.com/health", "https://web.example.com/health"]
+
+defaults:
+  llm.model: gpt-4o-mini
+  retry:
+    max: 3
+    backoff: 2.0
+
+env:
+  SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL
+  PAGERDUTY_KEY: $PAGERDUTY_API_KEY
+
+secrets:
+  - SLACK_WEBHOOK_URL
+  - PAGERDUTY_API_KEY
+
+# Reusable step groups
+macros:
+  health_check:
+    - http.request:
+        method: GET
+        url: "{{ url }}"
+        timeout: 30
+    - llm.generate:
+        prompt: "Analyze this health check response: {{ response.status_code }} - {{ response.text|truncate(200) }}"
+        temperature: 0.1
+
+  notify_team:
+    - slack.post(if_error=skip):
+        webhook_env: SLACK_WEBHOOK_URL
+        text: "{{ message }}"
+    - pagerduty.alert(if_error=skip, when="{{ severity == 'critical' }}"):
+        token_env: PAGERDUTY_API_KEY
+        summary: "{{ message }}"
+        severity: "{{ severity }}"
+
+# Environment-specific overlays
+profile: dev
+apply:
+  dev:
+    env:
+      SLACK_WEBHOOK_URL: $DEV_SLACK_WEBHOOK
+      PAGERDUTY_KEY: $DEV_PAGERDUTY_KEY
+  prod:
+    env:
+      SLACK_WEBHOOK_URL: $PROD_SLACK_WEBHOOK
+      PAGERDUTY_KEY: $PROD_PAGERDUTY_KEY
+
+steps:
+  # Check system health
+  - shell.run:
+      cmd: "uptime && df -h"
+      cwd: "."
+
+  # Use macro for each URL health check
+  - use: health_check
+    with:
+      url: "{{ check_urls[0] }}"
+
+  - use: health_check
+    with:
+      url: "{{ check_urls[1] }}"
+
+  # Generate summary report
+  - llm.generate:
+      prompt: |
+        Create a system status summary based on:
+        - Uptime: {{ shell_out|lines|head(1) }}
+        - Disk usage: {{ shell_out|lines|tail(1) }}
+        - API health: {{ http_response_1.status_code }}
+        - Web health: {{ http_response_2.status_code }}
+        
+        Format as a brief status report.
+      temperature: 0.1
+
+  # Determine severity and notify
+  - python.eval:
+      target: "utils:determine_severity"
+      args: ["{{ llm_response }}", "{{ http_response_1.status_code }}", "{{ http_response_2.status_code }}"]
+
+  # Use notification macro
+  - use: notify_team
+    with:
+      message: "{{ llm_response }}"
+      severity: "{{ severity_level }}"

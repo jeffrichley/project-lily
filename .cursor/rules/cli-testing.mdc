@@ -1,171 +1,280 @@
----
-description:
-globs:
-alwaysApply: false
----
-Hey Jeff — Iris here. Short answer: **the “big kids” treat a CLI like a public API**. They unit-test the core logic, snapshot the UX, and run cross-platform end-to-end flows—hermetically. Here’s the playbook I see at high-end shops:
+# CLI Testing Guidelines
 
-# What great teams do for CLI testing
+## Overview
+This document outlines testing strategies and best practices for the Lily CLI application.
 
-## 1) Architect for testability
+## Test Structure
 
-* **Separate layers:** `core/` (pure Python services) ← `cli/` (Typer/Click adapter).
-  → 90% of tests hit `core` (fast, deterministic). A thin set validates CLI wiring.
-* **Pure functions, DI:** pass I/O, paths, env, and time as dependencies so you can stub them.
+### Unit Tests
+- Test individual CLI commands in isolation
+- Mock external dependencies (file system, network calls)
+- Use `pytest` fixtures for common setup
+- Test both success and failure scenarios
 
-## 2) Unit tests (wiring & parsing)
+### Integration Tests
+- Test command interactions with real file system
+- Test end-to-end workflows
+- Use temporary directories for file operations
+- Test error handling and edge cases
 
-* Verify subcommands, options, defaults, and exit codes.
-* Use the framework’s runner (Typer→Click) instead of `subprocess` for speed.
+### Example Test Structure
 
 ```python
-# tests/test_cli_run.py
-import typer
+import pytest
 from typer.testing import CliRunner
-from lily.cli import app  # Typer app
+from lily.cli.main import app
 
-runner = CliRunner(mix_stderr=False)
+@pytest.fixture
+def runner():
+    return CliRunner()
 
-def test_run_happy_path(tmp_path, monkeypatch):
-    outdir = tmp_path / "out"
-    res = runner.invoke(app, ["run", "demo.petal", "--out", str(outdir)])
-    assert res.exit_code == 0
-    assert "Completed" in res.stdout
+def test_start_command_success(runner):
+    """Test start command with valid input."""
+    # Arrange
+    # Act
+    result = runner.invoke(app, ["start"])
+    # Assert
+    assert result.exit_code == 0
+    assert "Starting Lily" in result.stdout
+
+def test_start_command_with_config(runner, tmp_path):
+    """Test start command with custom config."""
+    # Arrange
+    config_file = tmp_path / "config.toml"
+    config_file.write_text("openai_api_key = 'test-key'")
+    
+    # Act
+    result = runner.invoke(app, ["start", "--config", str(config_file)])
+    
+    # Assert
+    assert result.exit_code == 0
 ```
 
-## 3) Snapshot (“golden”) tests for UX
+## Testing Best Practices
 
-* Lock down `--help`, error messages, and typical output.
-* Strip ANSI codes so snapshots are stable across terminals.
-
+### 1. Use Temporary Directories
 ```python
-# tests/test_help_snapshot.py
-import re
-from typer.testing import CliRunner
-from lily.cli import app
-
-ANSI = re.compile(r"\x1b\[.*?m")
-def strip_ansi(s: str) -> str: return ANSI.sub("", s)
-
-def test_help_snapshot(file_regression):
-    res = CliRunner().invoke(app, ["--help"])
-    assert res.exit_code == 0
-    file_regression.check(strip_ansi(res.stdout), extension=".txt")
+def test_file_operations(runner, tmp_path):
+    """Test file operations with temporary directory."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("test content")
+    
+    result = runner.invoke(app, ["process", str(test_file)])
+    assert result.exit_code == 0
 ```
 
-*(Tools teams use: `pytest-regressions`, `approvaltests`, or `syrupy` for text snapshots.)*
-
-## 4) End-to-end tests (real process)
-
-* For **console\_scripts** and packaging, spawn the installed CLI:
-
-  * Build wheel, `pip/uv` install into a temp venv, then `subprocess.run(...)`.
-* Validate **return codes**, **stdout/stderr**, and **files produced**.
-
+### 2. Mock External Dependencies
 ```python
-# tests/e2e/test_install_and_run.py
-import subprocess, sys, os, textwrap, venv, tempfile, pathlib
+@patch('lily.config.openai_api_call')
+def test_openai_integration(mock_api, runner):
+    """Test OpenAI integration with mocked API."""
+    mock_api.return_value = "Mocked response"
+    
+    result = runner.invoke(app, ["ask", "test question"])
+    assert result.exit_code == 0
+    assert "Mocked response" in result.stdout
+```
 
-def test_entry_point_e2e(tmp_path):
-    # build wheel outside snippet; assume dist/*.whl exists
-    wheel = max(pathlib.Path("dist").glob("*.whl"))
-    vdir = tmp_path / "venv"; venv.EnvBuilder(with_pip=True).create(vdir)
-    py = vdir / ("Scripts/python.exe" if os.name=="nt" else "bin/python")
-    subprocess.check_call([str(py), "-m", "pip", "install", str(wheel)])
-    out = subprocess.run(
-        [str(py), "-m", "lily", "--version"],
-        capture_output=True, text=True
+### 3. Test Error Scenarios
+```python
+def test_invalid_config(runner, tmp_path):
+    """Test handling of invalid configuration."""
+    config_file = tmp_path / "invalid.toml"
+    config_file.write_text("invalid toml content [")
+    
+    result = runner.invoke(app, ["start", "--config", str(config_file)])
+    assert result.exit_code != 0
+    assert "error" in result.stderr.lower()
+```
+
+### 4. Test Interactive Commands
+```python
+def test_interactive_command(runner):
+    """Test interactive command execution."""
+    # Use input_stream for interactive testing
+    result = runner.invoke(
+        app, 
+        ["interactive"], 
+        input="help\nexit\n"
     )
-    assert out.returncode == 0
-    assert "lily" in out.stdout.lower()
+    assert result.exit_code == 0
 ```
 
-## 5) Interactive & TUI flows
+## Coverage Requirements
 
-* **prompt\_toolkit** shells: feed keystrokes and assert screen content.
-* Use **pexpect** (or `wexpect` on Windows) for interactive transcripts.
+### Minimum Coverage
+- **Unit Tests**: 80% line coverage
+- **Integration Tests**: 70% line coverage
+- **Critical Paths**: 100% coverage
 
+### Coverage Exclusions
+- Error handling for unrecoverable errors
+- Platform-specific code paths
+- Debug/development-only code
+
+## Test Data Management
+
+### Fixtures
 ```python
-# tests/e2e/test_shell_interactive.py
-import pexpect, sys, os
-def test_shell_basic():
-    child = pexpect.spawn("lily shell", env={**os.environ, "NO_COLOR":"1"})
-    child.expect("lily >")
-    child.sendline("help")
-    child.expect("Commands")
-    child.sendline("quit")
-    child.expect(pexpect.EOF)
+@pytest.fixture
+def sample_config():
+    """Provide sample configuration for testing."""
+    return {
+        "openai_api_key": "test-key",
+        "model": "gpt-4",
+        "theme": "light"
+    }
+
+@pytest.fixture
+def temp_config_file(sample_config, tmp_path):
+    """Create temporary config file."""
+    config_file = tmp_path / "config.toml"
+    with open(config_file, "w") as f:
+        tomli_w.dump(sample_config, f)
+    return config_file
 ```
 
-For **Rich** output, render with color disabled and assert the text layout:
+### Test Data Files
+- Store test data in `tests/data/` directory
+- Use descriptive file names
+- Include both valid and invalid test cases
 
+## Performance Testing
+
+### Command Response Time
 ```python
-from rich.console import Console
-from lily.ui import render_status  # your function
-def test_rich_rendering_stable(snapshot):
-    c = Console(color_system=None, width=80, record=True)
-    render_status(c, step="Compile", ok=True)
-    snapshot.assert_match(c.export_text())
+import time
+
+def test_command_performance(runner):
+    """Test command response time."""
+    start_time = time.time()
+    result = runner.invoke(app, ["version"])
+    end_time = time.time()
+    
+    assert result.exit_code == 0
+    assert (end_time - start_time) < 1.0  # Should complete within 1 second
 ```
 
-## 6) Filesystem, env, time: hermetic
-
-* Use `tmp_path` for all I/O; **never** touch the real home directory.
-* Monkeypatch env: `HOME`, `XDG_CONFIG_HOME`, `APPDATA`, `NO_COLOR`, `TERM`, `TZ`.
-* Freeze time for timestamps (`freezegun`).
-
+### Memory Usage
 ```python
-def test_xdg_paths(tmp_path, monkeypatch):
-    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path/"cfg"))
-    # run CLI; assert it writes cfg/lily/config.yaml
+import psutil
+import os
+
+def test_memory_usage(runner):
+    """Test memory usage during command execution."""
+    process = psutil.Process(os.getpid())
+    initial_memory = process.memory_info().rss
+    
+    result = runner.invoke(app, ["start"])
+    
+    final_memory = process.memory_info().rss
+    memory_increase = final_memory - initial_memory
+    
+    assert memory_increase < 50 * 1024 * 1024  # Less than 50MB increase
 ```
 
-## 7) Network & subprocess isolation
+## Continuous Integration
 
-* Mock HTTP with **VCR.py** or **responses**.
-* Stub `subprocess.run` with `pytest-subprocess` when you can; use real subprocess only in E2E.
+### GitHub Actions
+```yaml
+- name: Run Tests
+  run: |
+    just test
+    just lint
+    just type-check
+```
 
-## 8) Cross-platform matrix in CI
+### Pre-commit Hooks
+```yaml
+- repo: local
+  hooks:
+    - id: pytest
+      name: pytest
+      entry: pytest
+      language: system
+      pass_filenames: false
+      always_run: true
+```
 
-* **OS:** Ubuntu, macOS, Windows.
-* **Py versions:** 3.10–3.12 (match your support window).
-* **Terminal modes:** TTY vs non-TTY; `NO_COLOR=1` on/off.
-* **Locale:** set `LC_ALL=C.UTF-8` to avoid formatting drift.
+## Debugging Tests
 
-*(Nox or tox to orchestrate; `uv` to create fast, reproducible envs.)*
+### Verbose Output
+```bash
+pytest -v --tb=short
+```
 
-## 9) Contract tests for CLI stability
+### Debug Mode
+```python
+def test_debug_example(runner):
+    """Example with debug output."""
+    result = runner.invoke(app, ["start"], catch_exceptions=False)
+    
+    if result.exit_code != 0:
+        print(f"STDOUT: {result.stdout}")
+        print(f"STDERR: {result.stderr}")
+        print(f"Exception: {result.exception}")
+    
+    assert result.exit_code == 0
+```
 
-* Treat the CLI surface (subcommand names, flags, exit codes) as a **contract**.
-* A small suite asserts that renaming or removing options fails the build.
-* Keep `--help` under snapshot test; add a CHANGELOG gate for any delta.
+### Interactive Debugging
+```python
+import pdb
 
-## 10) Performance & smoke checks
+def test_with_debugger(runner):
+    """Test with interactive debugger."""
+    result = runner.invoke(app, ["start"])
+    
+    if result.exit_code != 0:
+        pdb.set_trace()  # Drop into debugger
+    
+    assert result.exit_code == 0
+```
 
-* A “smoke” test that runs a representative `.petal` end-to-end with a tight timeout.
-* Track wall time regression with a loose threshold, e.g., `assert duration < 5.0`.
+## Common Issues and Solutions
 
----
+### 1. Environment Variables
+```python
+@patch.dict(os.environ, {'OPENAI_API_KEY': 'test-key'})
+def test_with_env_var(runner):
+    """Test with environment variable set."""
+    result = runner.invoke(app, ["start"])
+    assert result.exit_code == 0
+```
 
-## Minimal testing stack I recommend for Lily
+### 2. File Permissions
+```python
+def test_file_permissions(runner, tmp_path):
+    """Test file permission handling."""
+    read_only_file = tmp_path / "readonly.txt"
+    read_only_file.write_text("content")
+    read_only_file.chmod(0o444)  # Read-only
+    
+    result = runner.invoke(app, ["process", str(read_only_file)])
+    assert result.exit_code != 0
+```
 
-* **pytest** + **pytest-cov**
-* **Typer/Click CliRunner** for fast CLI unit tests
-* **pytest-regressions** (or ApprovalTests) for golden text
-* **pexpect** for interactive shells
-* **freezegun**, **pytest-subprocess**, **responses/VCR.py** for determinism
-* **nox** (or tox) to run the full matrix locally; CI mirrors it
+### 3. Network Timeouts
+```python
+@patch('requests.get', side_effect=requests.exceptions.Timeout)
+def test_network_timeout(mock_get, runner):
+    """Test network timeout handling."""
+    result = runner.invoke(app, ["fetch", "http://example.com"])
+    assert result.exit_code != 0
+    assert "timeout" in result.stderr.lower()
+```
 
----
+## Summary
 
-## Tiny checklist to operationalize
+- Write comprehensive unit and integration tests
+- Use temporary directories for file operations
+- Mock external dependencies
+- Test both success and failure scenarios
+- Maintain high test coverage
+- Use descriptive test names and documentation
+- Include performance and memory usage tests
+- Set up proper CI/CD pipeline
 
-* [ ] Split core vs CLI adapter
-* [ ] Add CliRunner tests for each subcommand
-* [ ] Snapshot `--help` and common errors (ANSI stripped)
-* [ ] One real E2E invoking installed entry point
-* [ ] Interactive test for `lily shell` (pexpect)
-* [ ] Hermetic FS/env fixtures (XDG, HOME, APPDATA)
 * [ ] CI matrix: {linux, mac, windows} × {3.10–3.12}
 * [ ] Coverage gate (e.g., 90%) and a smoke/perf test
 

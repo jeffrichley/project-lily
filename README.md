@@ -1,163 +1,175 @@
-# Project Lily
+# 🌙 Lily
 
-[![CI](https://github.com/jeffrichley/lily/workflows/CI/badge.svg)](https://github.com/jeffrichley/lily/actions)
-[![Codecov](https://codecov.io/gh/jeffrichley/lily/branch/main/graph/badge.svg)](https://codecov.io/gh/jeffrichley/lily)
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![pre-commit enabled](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
-[![Ruff](https://img.shields.io/badge/ruff-enabled-brightgreen?logo=ruff&logoColor=white)](https://github.com/astral-sh/ruff)
-[![MyPy](https://img.shields.io/badge/mypy-enabled-brightgreen?logo=mypy&logoColor=white)](https://mypy-lang.org/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
-[![pip-audit](https://img.shields.io/badge/pip--audit-enabled-brightgreen?logo=security&logoColor=white)](https://pypi.org/project/pip-audit/)
-![pyproject validated](https://img.shields.io/badge/pyproject%20schema-valid-brightgreen?style=flat-square)
+Software development project planning and organization tool.
 
-A modern, declarative workflow automation system with a simple CLI interface.
+## Features
 
-## 🚀 Quick Start
+- **Modern Python Tooling**: Built with uv, nox, and just for optimal development experience
+- **Quality Assurance**: Comprehensive testing, linting, and type checking
+- **Documentation**: Automated documentation generation with Sphinx
+- **CI/CD Ready**: Pre-configured GitHub Actions workflows
+- **Type Safety**: Full type hints and mypy integration
+- **Extensible Architecture**: Modular design with plugin support
+
+## Quick Start
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/jeffrichley/lily.git
+git clone https://github.com/your-org/lily.git
 cd lily
 
-# Install with uv (recommended)
+# Install dependencies
 uv sync
 
-# Or install with pip
-pip install -e .
+# Install in development mode
+uv pip install -e .
 ```
 
-### Development Setup
+### Development
 
 ```bash
-# Install in editable mode with development dependencies
-uv pip install -e ".[dev]"
-
-# Run quality checks
-uv run dev checkit
-
 # Run tests
-uv run dev test
+just test
+
+# Run linting
+just lint
+
+# Run type checking
+just type-check
 
 # Build documentation
-uv run dev docs
-```
+just docs
 
-## 📦 Usage
-
-### Basic Workflow Execution
-
-```bash
-# Compose and run a Petal workflow
-lily compose examples/hello_world.petal
-
-# Run with dry-run mode to see what would happen
-lily compose examples/hello_world.petal --dry-run
-
-# Get information about a workflow
-lily info examples/hello_world.petal
-```
-
-### Creating Petal Workflows
-
-Petal workflows are defined in YAML files with a simple, declarative syntax:
-
-```yaml
-name: "Hello World"
-description: "A simple example workflow"
-
-params:
-  name:
-    type: "str"
-    default: "World"
-    help: "Name to greet"
-
-steps:
-  - id: "greet"
-    uses: "shell"
-    command: "echo 'Hello, {{ params.name }}!'"
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-uv run dev test
-
-# Run with coverage
-uv run dev test --cov
-
-# Run specific test file
-uv run pytest tests/unit/test_example.py
-```
-
-## 📚 Documentation
-
-- **[API Reference](docs/api.md)**: Complete API documentation
-- **[Contributing Guide](CONTRIBUTING.md)**: How to contribute to the project
-- **[Petal DSL Guide](docs/planning/petal/)**: Petal workflow language documentation
-
-## 🛠️ Development
-
-### Quality Checks
-
-```bash
 # Run all quality checks
-uv run dev checkit
-
-# Individual checks
-uv run dev lint          # Code linting
-uv run dev typecheck     # Type checking
-uv run dev format        # Code formatting
+just quality
 ```
 
-### Project Structure
+### Usage
+
+```bash
+# Start the interactive shell
+lily start
+
+# Show version
+lily version
+
+# Manage configuration
+lily config
+```
+
+## Project Structure
 
 ```
 lily/
-├── src/lily/           # Main package source code
+├── src/lily/           # Main package
 │   ├── cli/           # Command-line interface
-│   ├── petal/         # Petal DSL implementation
-│   └── compose/       # Workflow composition engine
+│   ├── config.py      # Configuration management
+│   ├── shell.py       # Shell command execution
+│   ├── theme.py       # Theme management
+│   └── types.py       # Type definitions
 ├── tests/             # Test suite
-│   ├── unit/          # Unit tests
-│   ├── integration/   # Integration tests
-│   └── e2e/           # End-to-end tests
-├── examples/          # Example Petal workflows
 ├── docs/              # Documentation
-└── README.md          # This file
+├── examples/          # Example usage
+└── pyproject.toml     # Project configuration
 ```
 
-## 🤝 Contributing
+## Development
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+### Prerequisites
 
-### Quick Setup
+- Python 3.8+
+- uv (recommended) or pip
+- just (optional, for development shortcuts)
+
+### Setup
+
+1. **Install uv** (recommended package manager):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Install just** (optional, for development shortcuts):
+   ```bash
+   # macOS
+   brew install just
+   
+   # Linux
+   cargo install just
+   ```
+
+3. **Clone and setup**:
+   ```bash
+   git clone https://github.com/your-org/lily.git
+   cd lily
+   uv sync
+   ```
+
+### Development Commands
 
 ```bash
+# Run tests
+just test
+
+# Run all tests (unit, integration, e2e)
+just test-all
+
+# Run linting
+just lint
+
+# Run type checking
+just type-check
+
+# Build documentation
+just docs
+
+# Run all quality checks
+just quality
+
 # Install development dependencies
-uv pip install -e ".[dev,docs]"
+just install
 
-# Run quality checks
-uv run dev checkit
-
-# Make your changes and test
-uv run dev test
+# Clean up generated files
+just clean
 ```
 
-## 📄 License
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests for new functionality
+5. Run the test suite
+6. Submit a pull request
+
+### Code Style
+
+- Follow PEP 8
+- Use type hints
+- Write docstrings for all public functions
+- Keep functions small and focused
+
+### Testing
+
+- Write unit tests for new functionality
+- Ensure all tests pass before submitting
+- Aim for high test coverage
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🎉 Acknowledgments
+## Support
 
-- Built with modern Python best practices
-- Designed for maintainability and extensibility
-- Simple, declarative workflow automation
+- **Issues**: [GitHub Issues](https://github.com/your-org/lily/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-org/lily/discussions)
+- **Documentation**: [docs/](docs/)
 
----
+## Roadmap
 
-**Project Lily** - Modern workflow automation with declarative YAML
+- [ ] Enhanced CLI features
+- [ ] Plugin system
+- [ ] Integration with popular development tools
+- [ ] Cloud deployment support
+- [ ] Team collaboration features

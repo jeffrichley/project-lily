@@ -1,0 +1,46 @@
+version: 0.1
+name: acme_demo
+description: Shell → LLM → DB → Slack → Twitter workflow
+params:
+  prompt: "Analyze the current directory structure"
+  cmd: "ls -la"
+defaults:
+  llm.model: gpt-4o-mini
+  retry:
+    max: 2
+    backoff: 1.5
+env:
+  SLACK_WEBHOOK_URL: $SLACK_WEBHOOK_URL
+  TWITTER_TOKEN: $TWITTER_BEARER_TOKEN
+secrets:
+  - SLACK_WEBHOOK_URL
+  - TWITTER_BEARER_TOKEN
+
+steps:
+  # Run shell command and capture output
+  - shell.run:
+      cmd: "{{ cmd }}"
+      cwd: "."
+
+  # Generate LLM analysis of the directory listing
+  - llm.generate:
+      prompt: "{{ prompt }}\n---\nDirectory listing:\n{{ shell_out|truncate(800) }}"
+      temperature: 0.1
+      max_tokens: 500
+
+  # Query database for matching items
+  - sqlite.query(if_error=skip):
+      db_path: "app.db"
+      sql: "SELECT id, name, created_at FROM items WHERE name LIKE :query ORDER BY created_at DESC LIMIT 10"
+      params:
+        query: "%{{ llm_query|truncate(50) }}%"
+
+  # Post to Slack if we found results
+  - slack.post(if_error=skip, when="{{ row_count|rows > 0 }}"):
+      webhook_env: SLACK_WEBHOOK_URL
+      text: "Found {{ row_count }} matching items for query '{{ llm_query|truncate(100) }}'"
+
+  # Post summary to Twitter
+  - twitter.post(if_error=skip):
+      token_env: TWITTER_BEARER_TOKEN
+      text: "Update: {{ text|truncate(200) }}"

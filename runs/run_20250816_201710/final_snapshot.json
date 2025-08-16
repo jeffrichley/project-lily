@@ -1,0 +1,17 @@
+{
+  "run_id": "run_20250816_201710",
+  "timestamp": "2025-08-16T20:17:10.316247+00:00",
+  "state": {},
+  "step_status": {
+    "step1": "running"
+  },
+  "step_results": {},
+  "events": [
+    {
+      "timestamp": "2025-08-16T20:17:10.315952+00:00",
+      "type": "step_status_changed",
+      "step_id": "step1",
+      "status": "running"
+    }
+  ]
+}

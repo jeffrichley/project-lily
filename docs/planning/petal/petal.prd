@@ -1,0 +1,632 @@
+# Project Lily — Petal Workflow System PRD
+
+**Document Type:** Product Requirements Document  
+**Version:** 1.0  
+**Author:** Iris (via AI IDE Agent)  
+**Date:** 2025-01-27  
+**Status:** Draft  
+**Project:** Petal Workflow System  
+
+---
+
+## 1. Executive Summary
+
+Petal is a local-first, pluggable workflow system with YAML+Jinja2 syntax that enables developers to create and execute sequential tool chains with shared state, caching, and human-in-the-loop capabilities. Built as a core subsystem of Project Lily, Petal provides the foundation for workflow automation while maintaining Lily's commitment to local-first, developer-friendly tooling.
+
+### 1.1 Vision Statement
+
+Enable developers to create reproducible, version-controlled workflow automation through a simple, ergonomic syntax that supports complex multi-step tool chains without requiring servers or daemons.
+
+### 1.2 Success Metrics
+
+- **Performance:** < 3 seconds to execute simple 3-step workflow
+- **Reliability:** 100% deterministic compilation from short-form to canonical
+- **Security:** Zero security incidents in production usage
+- **Efficiency:** 90%+ cache hit rate for repeated workflows
+- **Developer Experience:** Complete LSP integration with validation and completions
+
+---
+
+## 2. Product Context
+
+### 2.1 Target Users
+
+**Primary Users:**
+- **Software Developers** who need to automate multi-step workflows
+- **DevOps Engineers** requiring reproducible tool chains
+- **Data Scientists** building ETL pipelines
+- **Product Teams** needing human-in-the-loop automation
+
+**Secondary Users:**
+- **Plugin Developers** creating custom tools for Petal
+- **System Administrators** managing workflow execution environments
+
+### 2.2 User Stories
+
+**Core Workflow Automation:**
+- As a developer, I want to write simple YAML workflows that execute shell commands and process results
+- As a DevOps engineer, I want to create reproducible tool chains with human approval steps
+- As a data scientist, I want to build ETL pipelines that cache intermediate results
+- As a product team, I want to automate workflows with LLM processing and external API calls
+
+**Developer Experience:**
+- As a developer, I want syntax highlighting and validation in my editor
+- As a developer, I want to discover available tools and their schemas
+- As a developer, I want to debug workflows with step-by-step execution
+- As a developer, I want to reuse workflow components across projects
+
+### 2.3 Integration with Lily
+
+Petal integrates seamlessly with the existing Lily CLI architecture:
+- Extends `lily` CLI with `petal` subcommands
+- Follows Lily's configuration management patterns
+- Uses Lily's existing development tooling (uv, nox, just)
+- Maintains Lily's local-first philosophy
+
+---
+
+## 3. Product Requirements
+
+### 3.1 Core Features
+
+#### 3.1.1 Canonical Schema & Executor Core
+- **Canonical Models:** Pydantic-based schema for PetalFile, Step, Retry with JSON Schema export
+- **Executor Engine:** Sequential step execution with state management and persistence
+- **State Management:** Shared state across steps with automatic merging
+- **Run Snapshots:** Persistent storage of execution history in `.runs/<run_id>/`
+- **Error Policies:** Configurable fail/skip/retry with backoff strategies
+
+#### 3.1.2 Short-Form Compiler
+- **YAML+Jinja2 Syntax:** Human-friendly authoring format
+- **Template Engine:** Jinja2 with custom helpers (truncate, head, rows, now, json)
+- **Macro System:** Reusable step groups with parameterization
+- **Inference Engine:** Auto-generation of step IDs, reads, and writes
+- **Defaults & Profiles:** Global defaults and environment-specific overlays
+
+#### 3.1.3 Plugin System
+- **Pluggy Integration:** Standard Python plugin architecture
+- **Tool Discovery:** Automatic discovery via entry points
+- **Schema Validation:** Input/output validation with Pydantic
+- **Writes Enforcement:** Declared vs actual output verification
+- **Documentation Generation:** Auto-generated tool documentation
+
+#### 3.1.4 Built-in Tools
+- **Shell Integration:** `shell.run` with sandbox defaults and security controls
+- **HTTP Client:** `http.request` with domain allowlist and secret redaction
+- **Database Access:** `sqlite.query` for local data persistence
+- **LLM Integration:** `llm.generate` with caching and json_mode support
+- **Social Media:** `slack.post` and `twitter.post` with webhook/token resolution
+- **Human-in-the-Loop:** `ask.confirm` for approval workflows
+
+#### 3.1.5 Caching & Provenance
+- **Content-Addressed Cache:** Hash-based caching with metadata storage
+- **Cache Poisoning Prevention:** Secret exclusion from cache keys
+- **Provenance Logging:** Event log with step phases and cache tracking
+- **Cache Management:** CLI commands for cache inspection and cleanup
+
+### 3.2 CLI Interface
+
+#### 3.2.1 Core Commands
+- `lily petal run <file>` - Execute a Petal workflow
+- `lily petal explain <file>` - Show execution plan without running
+- `lily petal validate <file>` - Validate syntax and schemas
+- `lily petal schema` - Export canonical JSON Schema
+
+#### 3.2.2 Tool Management
+- `lily petal list-tools` - Show available tools with schemas
+- `lily petal docs <tool>` - Show tool documentation and examples
+
+#### 3.2.3 Execution Options
+- `--dry-run` - Validate without execution
+- `--use-cache` - Enable content-addressed caching
+- `--run-id <id>` - Specify custom run identifier
+- `-p key=value` - Override parameters
+- `--env-file <file>` - Load environment variables
+- `--yes` - Auto-approve human-in-the-loop steps
+
+### 3.3 LSP Integration
+
+#### 3.3.1 Language Server Features
+- **YAML Schema Validation:** Real-time validation using canonical schema
+- **Tool Completions:** Auto-completion for tool names and parameters
+- **Hover Documentation:** Tool documentation on hover
+- **Diagnostics:** Error reporting for unknown tools and missing inputs
+- **Code Actions:** Shorten/expand transformations and write insertion
+
+#### 3.3.2 Editor Integration
+- **VS Code Extension:** Full LSP support with Petal language
+- **Syntax Highlighting:** Custom YAML highlighting for Petal syntax
+- **Snippets:** Pre-built workflow templates and common patterns
+
+---
+
+## 4. Technical Architecture
+
+### 4.1 System Design
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Short-Form    │    │   Compiler      │    │   Canonical     │
+│   YAML+Jinja2   │───▶│   (Phase 4)     │───▶│   Schema        │
+│   Authoring     │    │                 │    │   (Phase 1)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+                                                        ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   LSP Server    │    │   Executor      │    ┌   Plugin        │
+│   (Phase 8)     │◀───│   Core          │◀───│   System        │
+│                 │    │   (Phase 1)     │    │   (Phase 2)     │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+                                                        ▼
+                                              ┌─────────────────┐
+                                              │   Built-in      │
+                                              │   Tools         │
+                                              │   (Phase 3)     │
+                                              └─────────────────┘
+```
+
+### 4.2 Data Flow
+
+1. **Authoring:** Developer writes short-form YAML with Jinja2 templates
+2. **Compilation:** Short-form compiled to canonical schema with validation
+3. **Execution:** Executor loads canonical, runs steps sequentially
+4. **Tool Execution:** Plugin system dispatches to appropriate tools
+5. **State Management:** Results merged into shared state
+6. **Caching:** Content-addressed cache stores results for reuse
+7. **Provenance:** Event log tracks execution history
+
+### 4.3 Security Model
+
+#### 4.3.1 Sandbox Defaults
+- **Shell Sandbox:** CWD confinement, command denylist, explicit allow overrides
+- **HTTP Allowlist:** Configurable domain allowlist with clear error messages
+- **Secret Management:** Environment/keyring resolution with automatic redaction
+- **Plugin Security:** Entry point validation, no arbitrary code execution
+
+#### 4.3.2 Data Protection
+- **Secret Redaction:** Automatic redaction in logs and snapshots
+- **Cache Security:** Secret exclusion from cache keys
+- **Template Safety:** Jinja2 sandboxing and injection prevention
+
+---
+
+## 5. Implementation Plan
+
+### 5.1 Phase 1: Canonical Schema & Executor Core (Weeks 1-2)
+
+**Goal:** Walking skeleton with canonical execution
+
+**Deliverables:**
+- Canonical Pydantic models with JSON Schema export
+- Executor core with state management and persistence
+- Minimal tool interface with debug tools
+- Basic CLI integration
+
+**Success Criteria:**
+- `lily petal run canonical.yaml` executes successfully
+- `lily petal explain canonical.yaml` shows execution plan
+- Debug tools execute without side effects
+- State persistence works correctly
+
+### 5.2 Phase 2: Plugin System (Week 3)
+
+**Goal:** Externalize tools with declared contracts
+
+**Deliverables:**
+- Pluggy-based plugin system
+- Tool discovery via entry points
+- Schema validation and writes enforcement
+- Tool documentation generation
+
+**Success Criteria:**
+- External plugins load via pip
+- `lily petal list-tools` shows all available tools
+- Tool contracts validate inputs and outputs
+- Schema validation catches bad inputs
+
+### 5.3 Phase 3: Built-in Tools (Weeks 4-5)
+
+**Goal:** Useful set of tools with security hardening
+
+**Deliverables:**
+- Shell, HTTP, SQLite, LLM, Slack, Twitter tools
+- Security hardening with sandbox defaults
+- Secret resolution and redaction
+- Human-in-the-loop primitives
+
+**Success Criteria:**
+- All built-in tools validate inputs and return declared writes
+- Shell execution respects sandbox defaults
+- HTTP requests respect domain allowlist
+- Secrets are properly resolved and redacted
+
+### 5.4 Phase 4: Short-Form Compiler (Weeks 6-7)
+
+**Goal:** Ergonomic authoring with YAML+Jinja2
+
+**Deliverables:**
+- Short-form parser with macro expansion
+- Jinja2 templating with custom helpers
+- Inference for implicit reads/writes/ids
+- Defaults and profiles system
+
+**Success Criteria:**
+- Short-form compiles to valid canonical form
+- Template variables resolve correctly
+- Macros expand and merge properly
+- Defaults and profiles inject correctly
+
+### 5.5 Phase 5: Caching & Provenance (Week 8)
+
+**Goal:** Performance and debuggability
+
+**Deliverables:**
+- Content-addressed cache system
+- Provenance event logging
+- Cache-aware CLI commands
+
+**Success Criteria:**
+- Cache keys are deterministic and exclude secrets
+- Cache hits speed up repeated runs
+- Provenance log captures all events
+- Explain shows cache hit/miss information
+
+### 5.6 Phase 6: Error Handling (Week 9)
+
+**Goal:** Robust error handling and human interaction
+
+**Deliverables:**
+- Retry policies with jitter/backoff
+- Human-in-the-loop confirmation tool
+- Comprehensive error diagnostics
+
+**Success Criteria:**
+- Retry policies work with jitter and backoff
+- `ask.confirm` pauses for TTY input unless `--yes`
+- Error diagnostics provide helpful remediation hints
+- `if_error` policies are respected
+
+### 5.7 Phase 7: CLI Polish (Week 10)
+
+**Goal:** Daily usability
+
+**Deliverables:**
+- Complete CLI with all commands
+- Parameter overrides and environment files
+- Pretty plan output with step visualization
+
+**Success Criteria:**
+- All CLI commands work with proper argument parsing
+- Parameter overrides are reflected in explain and run
+- Pretty plan output shows step dependencies
+- Environment files load correctly
+
+### 5.8 Phase 8: LSP Integration (Weeks 11-12)
+
+**Goal:** First-class editor integration
+
+**Deliverables:**
+- LSP server with pygls
+- YAML schema validation
+- Completions, hover, and diagnostics
+- Code actions for workflow transformation
+
+**Success Criteria:**
+- LSP validates YAML schema correctly
+- Completions work for tool names and fields
+- Hover shows tool documentation
+- Code actions function properly
+
+### 5.9 Phase 9: Security Hardening (Week 13)
+
+**Goal:** Safe by default
+
+**Deliverables:**
+- Shell sandbox with confinement defaults
+- HTTP domain allowlist
+- Secret redaction middleware
+
+**Success Criteria:**
+- Shell sandbox prevents dangerous operations by default
+- HTTP allowlist blocks unauthorized domains
+- Secrets are never serialized or logged
+- Security defaults can be relaxed explicitly
+
+### 5.10 Phase 10: Documentation & Examples (Week 14)
+
+**Goal:** Real usage proves design
+
+**Deliverables:**
+- Five end-to-end example petals
+- Plugin development guide
+- FAQ and troubleshooting guide
+
+**Success Criteria:**
+- All example petals run successfully
+- Plugin guide enables external development
+- FAQ covers common issues and solutions
+- Integration tests pass for all examples
+
+---
+
+## 6. Technical Requirements
+
+### 6.1 Dependencies
+
+**Core Dependencies:**
+- Python ≥ 3.10
+- Pydantic v2 for schema validation
+- Jinja2 for templating
+- Pluggy for plugin system
+- PyYAML for YAML parsing
+- pygls for LSP implementation
+
+**Development Dependencies:**
+- pytest for testing
+- ruff for linting
+- mypy for type checking
+- black for formatting
+- coverage for test coverage
+
+### 6.2 Environment Variables
+
+**Configuration:**
+- `PETAL_CACHE_DIR` - Cache storage directory
+- `PETAL_RUNS_DIR` - Run snapshots directory
+- `PETAL_SECRETS_KEYRING` - Keyring backend for secrets
+
+**Security:**
+- `PETAL_SHELL_ALLOW` - Override shell sandbox
+- `PETAL_HTTP_ALLOWLIST` - HTTP domain allowlist
+
+### 6.3 File Structure
+
+```
+src/lily/petal/
+├── core/                 # Executor, state, errors
+│   ├── executor.py      # Main execution engine
+│   ├── state.py         # State management
+│   ├── cache.py         # Content-addressed cache
+│   ├── provenance.py    # Event logging
+│   ├── retry.py         # Retry policies
+│   └── errors.py        # Error handling
+├── model.py             # Canonical Pydantic models
+├── compile/             # Short-form compiler
+│   ├── parser.py        # Short-form parser
+│   ├── templating.py    # Jinja2 integration
+│   ├── inference.py     # Reads/writes inference
+│   └── defaults.py      # Defaults and profiles
+├── plugins/             # Plugin system
+│   ├── hooks.py         # Hook specifications
+│   └── loader.py        # Plugin discovery
+├── builtins/            # Built-in tools
+│   ├── shell.py         # Shell execution
+│   ├── http.py          # HTTP client
+│   ├── sqlite.py        # Database access
+│   ├── llm.py           # LLM integration
+│   ├── social.py        # Social media tools
+│   └── ask.py           # Human-in-the-loop
+├── security/            # Security hardening
+│   ├── shell.py         # Shell sandbox
+│   ├── http.py          # HTTP allowlist
+│   └── secrets.py       # Secret redaction
+└── lsp/                 # Language server
+    ├── server.py        # LSP server
+    ├── completions.py   # Auto-completion
+    └── diagnostics.py   # Error diagnostics
+```
+
+---
+
+## 7. Validation & Testing
+
+### 7.1 Unit Tests
+
+**Core Components:**
+- Canonical model validation with Pydantic
+- Executor state management and step execution
+- Debug tools execution without side effects
+- Plugin system loading and tool discovery
+- Short-form compilation to canonical form
+- Template variable resolution and context order
+- Cache key generation and secret exclusion
+- Retry policy implementation with jitter/backoff
+
+### 7.2 Integration Tests
+
+**End-to-End Workflows:**
+- Complete workflow execution with multiple steps
+- Plugin discovery and tool execution
+- Short-form to canonical compilation and execution
+- Caching system with cache hits and misses
+- Error handling with retries and human approval
+- CLI commands with parameter overrides
+- LSP validation and completions
+- Security hardening with sandbox defaults
+
+### 7.3 Security Tests
+
+**Security Hardening:**
+- Shell sandbox prevents dangerous operations by default
+- HTTP allowlist blocks unauthorized domains
+- Secrets are never serialized or logged
+- Template injection attacks are prevented
+- Plugin loading security (no arbitrary code execution)
+- Cache poisoning prevention
+
+### 7.4 Performance Tests
+
+**Performance Benchmarks:**
+- Workflow execution performance with large state objects
+- Cache hit performance vs cache miss
+- Template rendering performance with complex Jinja2 expressions
+- Plugin discovery performance with many plugins
+- LSP response time for completions and validation
+
+---
+
+## 8. Risk Assessment
+
+### 8.1 Technical Risks
+
+**High Risk:**
+- Template variable inference (reads) can be brittle
+- LLM variability affects caching determinism
+- Plugin system security vulnerabilities
+
+**Mitigation:**
+- Treat reads inference as "best-effort" with explicit override
+- Exclude non-deterministic fields from cache keys
+- Validate entry points before loading, sandbox execution
+
+**Medium Risk:**
+- Complex Jinja2 templates impact performance
+- Large state objects affect memory usage
+- Circular dependencies in plugin loading
+
+**Mitigation:**
+- Template compilation caching, complexity limits
+- Streaming state updates, garbage collection
+- Circular dependency detection and prevention
+
+### 8.2 Product Risks
+
+**High Risk:**
+- Developer adoption of new syntax
+- Integration complexity with existing Lily CLI
+- Security defaults too restrictive for real usage
+
+**Mitigation:**
+- Comprehensive documentation and examples
+- Gradual integration with existing CLI patterns
+- Configurable security with clear override mechanisms
+
+**Medium Risk:**
+- Plugin ecosystem development
+- LSP editor integration complexity
+- Performance with large workflows
+
+**Mitigation:**
+- Plugin development guide and examples
+- Standard LSP protocol, VS Code extension
+- Performance monitoring and optimization
+
+---
+
+## 9. Success Criteria
+
+### 9.1 Phase 1 Success (Weeks 1-2)
+- [ ] Canonical models validate correctly with Pydantic
+- [ ] Executor runs sequential steps and merges state
+- [ ] Debug tools execute without side effects
+- [ ] Dry-run mode validates without execution
+
+### 9.2 Phase 2 Success (Week 3)
+- [ ] Plugin system loads external tools via entry points
+- [ ] Tool contracts validate inputs and enforce writes
+- [ ] `list-tools` and `docs` commands work correctly
+- [ ] Schema validation catches bad inputs
+
+### 9.3 Phase 3 Success (Weeks 4-5)
+- [ ] All built-in tools validate inputs and return declared writes
+- [ ] Shell execution respects sandbox defaults
+- [ ] HTTP requests respect domain allowlist
+- [ ] Secrets are properly resolved and redacted
+
+### 9.4 Phase 4 Success (Weeks 6-7)
+- [ ] Short-form compiles to valid canonical form
+- [ ] Template variables resolve correctly in context order
+- [ ] Macros expand and merge properly
+- [ ] Defaults and profiles inject correctly
+
+### 9.5 Phase 5 Success (Week 8)
+- [ ] Cache keys are deterministic and exclude secrets
+- [ ] Cache hits speed up repeated runs
+- [ ] Provenance log captures all events correctly
+- [ ] Explain shows cache hit/miss information
+
+### 9.6 Phase 6 Success (Week 9)
+- [ ] Retry policies work with jitter and backoff
+- [ ] `ask.confirm` pauses for TTY input unless `--yes`
+- [ ] Error diagnostics provide helpful remediation hints
+- [ ] `if_error` policies are respected
+
+### 9.7 Phase 7 Success (Week 10)
+- [ ] All CLI commands work with proper argument parsing
+- [ ] Parameter overrides are reflected in explain and run
+- [ ] Pretty plan output shows step dependencies
+- [ ] Environment files load correctly
+
+### 9.8 Phase 8 Success (Weeks 11-12)
+- [ ] LSP validates YAML schema correctly
+- [ ] Completions work for tool names and fields
+- [ ] Hover shows tool documentation
+- [ ] Code actions function properly
+
+### 9.9 Phase 9 Success (Week 13)
+- [ ] Shell sandbox prevents dangerous operations by default
+- [ ] HTTP allowlist blocks unauthorized domains
+- [ ] Secrets are never serialized or logged
+- [ ] Security defaults can be relaxed explicitly
+
+### 9.10 Phase 10 Success (Week 14)
+- [ ] All example petals run successfully
+- [ ] Plugin guide enables external development
+- [ ] FAQ covers common issues and solutions
+- [ ] Integration tests pass for all examples
+
+---
+
+## 10. Future Considerations
+
+### 10.1 Potential Enhancements
+
+**Advanced Features:**
+- Parallel step execution
+- Distributed workflow execution
+- Web UI for workflow visualization
+- Workflow versioning and rollback
+- Advanced templating with custom functions
+- Integration with external orchestration systems
+
+**Ecosystem Development:**
+- Plugin marketplace
+- Workflow sharing and collaboration
+- Community-driven tool development
+- Enterprise features (RBAC, audit logging)
+- Cloud integration (AWS, GCP, Azure)
+
+### 10.2 Scalability Considerations
+
+**Performance Optimization:**
+- Incremental compilation
+- Parallel tool execution
+- Distributed caching
+- Workflow optimization
+- Resource usage monitoring
+
+**Enterprise Readiness:**
+- Multi-tenant support
+- Workflow governance
+- Compliance and audit trails
+- Integration with enterprise systems
+- High availability and disaster recovery
+
+---
+
+## 11. Conclusion
+
+The Petal workflow system represents a significant enhancement to Project Lily's capabilities, providing developers with a powerful, local-first workflow automation platform. By following the center-out implementation approach and maintaining Lily's commitment to developer experience and security, Petal will enable new use cases while preserving the simplicity and reliability that makes Lily effective.
+
+The phased implementation plan ensures that each milestone delivers working functionality, allowing for early feedback and iteration. The comprehensive testing strategy and security model ensure that Petal will be production-ready and maintainable for the long term.
+
+With its plugin architecture, Petal is designed to grow with the Lily ecosystem, enabling community contributions and specialized tool development. The LSP integration ensures that Petal workflows are first-class citizens in modern development environments.
+
+**Next Steps:**
+1. Begin Phase 1 implementation with canonical schema and executor core
+2. Set up development environment and CI/CD pipeline
+3. Create initial test suite and documentation
+4. Establish plugin development guidelines and examples
+
+The Petal workflow system will position Project Lily as a comprehensive development platform, capable of handling both simple automation tasks and complex, multi-step workflows with human-in-the-loop capabilities.
