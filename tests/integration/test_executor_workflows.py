@@ -2,7 +2,6 @@
 
 import pytest
 
-from lily.petal.enums import IfErrorPolicy, StepStatus
 from lily.petal.executor.core import PetalExecutor
 from lily.petal.models_strict import (
     DebugEchoStepConfig,

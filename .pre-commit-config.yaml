@@ -6,8 +6,8 @@ repos:
     rev: 25.1.0
     hooks:
       - id: black
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.12.7
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.9
     hooks:
       - id: ruff
         args: ["--fix"]
@@ -29,7 +29,7 @@ repos:
         pass_filenames: false
         types: [python]
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-merge-conflict
