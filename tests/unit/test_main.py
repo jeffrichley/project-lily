@@ -1,7 +1,8 @@
 """Unit tests for main module."""
 
-import pytest
 from unittest.mock import patch
+
+import pytest
 
 from lily.cli.main import main
 
@@ -24,7 +25,6 @@ class TestMain:
         # Arrange - Mock the app function
         with patch("lily.cli.main.app") as mock_app:
             # Act - Import and execute main module
-            import lily.__main__
 
             # Assert - Verify app was called (this covers the __name__ == "__main__" line)
             # Note: Importing doesn't execute the if __name__ == "__main__" block
