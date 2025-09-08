@@ -2,7 +2,7 @@
 
 import pytest
 
-from lily.theme import ThemeName, ThemeManager, get_theme_manager, switch_theme
+from lily.theme import ThemeManager, ThemeName, get_theme_manager, switch_theme
 
 
 @pytest.mark.unit

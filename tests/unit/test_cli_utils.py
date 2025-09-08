@@ -8,7 +8,6 @@ from rich.panel import Panel
 from rich.text import Text
 
 from lily.cli.utils import get_console, show_banner
-from lily.theme import get_theme_manager
 
 
 @pytest.mark.unit

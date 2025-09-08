@@ -1,6 +1,5 @@
 """Unit tests for Petal models."""
 
-from typing import Mapping
 
 import pytest
 from pydantic import ValidationError
